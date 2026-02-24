@@ -1,6 +1,7 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Save } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 interface BodySlider {
   label: string;
@@ -34,9 +35,11 @@ export const defaultFemaleCm: BodyProportions = { height: 163, chest: 90, waist:
 interface BodyCustomizerProps {
   proportions: BodyProportions;
   onChange: (proportions: BodyProportions) => void;
+  onSave?: (proportions: BodyProportions) => void;
+  isSaving?: boolean;
 }
 
-const BodyCustomizer = ({ proportions, onChange }: BodyCustomizerProps) => {
+const BodyCustomizer = ({ proportions, onChange, onSave, isSaving }: BodyCustomizerProps) => {
   const handleChange = (key: string, value: number) => {
     onChange({ ...proportions, [key]: value });
   };
@@ -77,6 +80,17 @@ const BodyCustomizer = ({ proportions, onChange }: BodyCustomizerProps) => {
           </div>
         </div>
       ))}
+      {onSave && (
+        <Button
+          onClick={() => onSave(proportions)}
+          disabled={isSaving}
+          size="sm"
+          className="w-full mt-2 font-sans text-xs"
+        >
+          <Save className="w-3.5 h-3.5 mr-1.5" />
+          {isSaving ? "Reshaping..." : "Save & Reshape"}
+        </Button>
+      )}
     </div>
   );
 };
