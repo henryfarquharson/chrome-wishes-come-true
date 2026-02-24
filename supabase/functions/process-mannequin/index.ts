@@ -77,7 +77,7 @@ CRITICAL RULES:
 - The skin color of the face MUST exactly match the off-white/cream color of the mannequin body - no realistic human skin tones
 - The face should have the same matte, non-reflective finish as the mannequin body
 - Scale the head proportionally to the mannequin body size - it should look like one continuous mannequin figure
-- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's hairstyle
+- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR. If the person has black hair, the mannequin hair must be black. If blonde, it must be blonde. Preserve the real hair color exactly — do NOT make it the same cream/off-white as the mannequin skin.
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
 - The final result should look like a single cohesive mannequin figure that was sculpted to resemble this person
 - No seams, color transitions, or visible joins between head and body
