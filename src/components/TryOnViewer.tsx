@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
-  Link2,
   RotateCcw,
   ShoppingBag,
   User,
@@ -10,6 +9,10 @@ import {
   ImageIcon,
   LogOut,
   Shirt,
+  Save,
+  BookOpen,
+  Trash2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +24,19 @@ import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } 
 import ProcessingOverlay, { type ProcessingStep } from "./ProcessingOverlay";
 import type { ProfileData } from "./ProfileSetup";
 
+interface ClosetItem {
+  id: string;
+  product_image: string;
+  result_image: string;
+  product_name: string | null;
+  created_at: string;
+}
+
 interface TryOnViewerProps {
   profile: ProfileData;
   onReset: () => void;
   onSaveMannequin?: (mannequinImage: string) => void;
+  userId?: string;
 }
 
 // Will be set based on gender in the component
@@ -114,7 +126,7 @@ const ProductLoadedBar = ({ productUrl, onDismiss }: { productUrl: string; onDis
   );
 };
 
-const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) => {
+const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
@@ -135,6 +147,9 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) =>
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedAction, setLastFailedAction] = useState<(() => void) | null>(null);
   const [productImage, setProductImage] = useState<string | null>(null);
+  const [showCloset, setShowCloset] = useState(false);
+  const [closetItems, setClosetItems] = useState<ClosetItem[]>([]);
+  const [savingToCloset, setSavingToCloset] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
   const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
@@ -368,12 +383,66 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) =>
   };
 
   const handleUndress = () => {
-    // Reset to base mannequin (with face/dimensions but no clothes)
     setCurrentMannequin(baseMannequinState || baseDoll);
     setHasProduct(false);
     setProductImage(null);
     setProductUrl("");
     toast.success("Clothes removed — ready for a new outfit!");
+  };
+
+  const handleSaveToCloset = async () => {
+    if (!userId || !currentMannequin || !productImage) return;
+    setSavingToCloset(true);
+    try {
+      const { error } = await supabase.from("closet_items").insert({
+        user_id: userId,
+        product_image: productImage,
+        result_image: currentMannequin,
+        product_name: productUrl || "Unnamed item",
+      });
+      if (error) throw error;
+      toast.success("Saved to your closet!");
+    } catch (err: any) {
+      console.error("Save to closet error:", err);
+      toast.error("Failed to save to closet");
+    } finally {
+      setSavingToCloset(false);
+    }
+  };
+
+  const loadCloset = async () => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from("closet_items")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setClosetItems((data as ClosetItem[]) || []);
+    } catch (err) {
+      console.error("Load closet error:", err);
+    }
+  };
+
+  const handleDeleteClosetItem = async (id: string) => {
+    try {
+      const { error } = await supabase.from("closet_items").delete().eq("id", id);
+      if (error) throw error;
+      setClosetItems((prev) => prev.filter((item) => item.id !== id));
+      toast.success("Removed from closet");
+    } catch (err) {
+      console.error("Delete closet item error:", err);
+    }
+  };
+
+  const handleTryOnFromCloset = (item: ClosetItem) => {
+    setCurrentMannequin(item.result_image);
+    setProductImage(item.product_image);
+    setProductUrl(item.product_name || "Closet item");
+    setHasProduct(true);
+    setShowCloset(false);
+    toast.success("Outfit loaded from closet!");
   };
 
   return (
@@ -384,6 +453,17 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) =>
           Quin Fit
         </h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowCloset(!showCloset); if (!showCloset) loadCloset(); }}
+            className={`p-1.5 rounded-md transition-colors ${
+              showCloset
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="My Closet"
+          >
+            <BookOpen className="w-4 h-4" />
+          </button>
           <button
             onClick={() => setShowSliders(!showSliders)}
             className={`p-1.5 rounded-md transition-colors ${
@@ -485,13 +565,25 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) =>
           {!isProcessing && steps.length === 0 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
               {hasProduct && (
-                <button
-                  onClick={handleUndress}
-                  className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
-                >
-                  <Shirt className="w-3 h-3" />
-                  Undress
-                </button>
+                <>
+                  <button
+                    onClick={handleUndress}
+                    className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                  >
+                    <Shirt className="w-3 h-3" />
+                    Undress
+                  </button>
+                  {productImage && (
+                    <button
+                      onClick={handleSaveToCloset}
+                      disabled={savingToCloset}
+                      className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                    >
+                      <Save className="w-3 h-3" />
+                      {savingToCloset ? "Saving..." : "Save"}
+                    </button>
+                  )}
+                </>
               )}
               <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1">
                 <RotateCcw className="w-3 h-3" />
@@ -508,6 +600,56 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) =>
               Body
             </p>
             <BodyCustomizer proportions={proportions} onChange={handleReshape} />
+          </div>
+        )}
+
+        {/* Closet panel */}
+        {showCloset && (
+          <div className="w-[200px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-sans font-semibold text-foreground uppercase tracking-wider">
+                My Closet
+              </p>
+              <button onClick={() => setShowCloset(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {closetItems.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground text-center py-4">
+                No saved items yet. Try on clothing and hit Save!
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {closetItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-border/30 overflow-hidden bg-secondary/30 group"
+                  >
+                    <button
+                      onClick={() => handleTryOnFromCloset(item)}
+                      className="w-full"
+                    >
+                      <img
+                        src={item.product_image}
+                        alt={item.product_name || "Saved item"}
+                        className="w-full aspect-square object-cover"
+                      />
+                    </button>
+                    <div className="p-1.5 flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground truncate flex-1">
+                        {item.product_name || "Unnamed"}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteClosetItem(item.id)}
+                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

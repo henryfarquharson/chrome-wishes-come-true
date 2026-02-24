@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      closet_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_image: string
+          product_name: string | null
+          result_image: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_image: string
+          product_name?: string | null
+          result_image: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_image?: string
+          product_name?: string | null
+          result_image?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           base_mannequin: string | null
