@@ -115,6 +115,63 @@ Keep the same style, pose, clothing, skin color, and background. Only adjust the
       const { mannequinImage, productImageUrl, gender } = body;
       console.log("Try-on with product URL:", productImageUrl?.slice(0, 100));
 
+      let productImageBase64 = productImageUrl;
+
+      // If it's a web URL, fetch the page and extract the og:image
+      if (productImageUrl.startsWith("http")) {
+        try {
+          console.log("Fetching product page to extract image...");
+          const pageRes = await fetch(productImageUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            },
+          });
+          const html = await pageRes.text();
+          
+          // Extract og:image or first product image from HTML
+          let imgUrl: string | null = null;
+          const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+            || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+          if (ogMatch) {
+            imgUrl = ogMatch[1];
+          } else {
+            // Try to find any large product image
+            const imgMatch = html.match(/https?:\/\/[^"'\s]+\.(?:jpg|jpeg|png|webp)[^"'\s]*/i);
+            if (imgMatch) imgUrl = imgMatch[0];
+          }
+
+          if (imgUrl) {
+            console.log("Found product image URL:", imgUrl.slice(0, 100));
+            // Fetch the actual image and convert to base64
+            const imgRes = await fetch(imgUrl, {
+              headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": productImageUrl,
+              },
+            });
+            const imgBuffer = await imgRes.arrayBuffer();
+            const contentType = imgRes.headers.get("content-type") || "image/jpeg";
+            
+            // Convert to base64
+            const bytes = new Uint8Array(imgBuffer);
+            let binary = "";
+            for (let i = 0; i < bytes.length; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            productImageBase64 = `data:${contentType};base64,${btoa(binary)}`;
+            console.log("Product image converted to base64, length:", productImageBase64.length);
+          } else {
+            console.error("Could not find product image in page HTML");
+            throw { status: 400, message: "Could not extract product image from URL. Try pasting a direct image URL instead." };
+          }
+        } catch (e: any) {
+          if (e.status) throw e;
+          console.error("Failed to fetch product page:", e);
+          throw { status: 400, message: "Could not access the product page. Try pasting a direct image URL instead." };
+        }
+      }
+
       const prompt = `You are a virtual try-on AI. I'm giving you two images:
 1. First image: A person/mannequin figure
 2. Second image: A clothing product photo
@@ -132,21 +189,13 @@ Requirements:
 - Keep the person's face, skin, and body shape exactly the same
 - The final image should look like a real photo of someone wearing this clothing`;
 
-      const content: any[] = [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: mannequinImage } },
-      ];
-
-      // If it's a URL, pass it directly (Gemini can fetch URLs)
-      if (productImageUrl.startsWith("http")) {
-        content.push({ type: "image_url", image_url: { url: productImageUrl } });
-      } else {
-        content.push({ type: "image_url", image_url: { url: productImageUrl } });
-      }
-
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
-        content,
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: mannequinImage } },
+          { type: "image_url", image_url: { url: productImageBase64 } },
+        ],
       }]);
 
     } else {
