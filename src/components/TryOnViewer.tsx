@@ -354,7 +354,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   return (
     <div className="flex flex-col h-full" style={{ background: 'linear-gradient(to bottom, #d4d0cc 0%, #b8b4af 50%, #d0ccc8 100%)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
           FitVision
         </h1>
@@ -457,7 +457,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       )}
 
       {/* Product URL input */}
-      <div className="p-4">
+      <div className="p-4 bg-card">
         {/* Product image preview */}
         {productImage && !isProcessing && (
           <div className="mb-3 flex items-center gap-2 bg-secondary/50 rounded-lg p-2">
