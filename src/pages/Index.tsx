@@ -115,6 +115,7 @@ const Index = () => {
             profile={profile}
             onReset={() => setProfile(null)}
             onSaveMannequin={handleSaveMannequin}
+            userId={user.id}
           />
         ) : (
           <ProfileSetup onComplete={handleProfileComplete} />
