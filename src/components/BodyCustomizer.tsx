@@ -15,6 +15,7 @@ interface BodySlider {
 const sliders: BodySlider[] = [
   { label: "Height", key: "height", min: 50, max: 150, default: 100, unit: "%" },
   { label: "Chest", key: "chest", min: 70, max: 130, default: 100, unit: "%" },
+  { label: "Waist", key: "waist", min: 70, max: 130, default: 100, unit: "%" },
   { label: "Hips", key: "hips", min: 70, max: 130, default: 100, unit: "%" },
   { label: "Legs", key: "legs", min: 70, max: 130, default: 100, unit: "%" },
 ];
@@ -22,6 +23,7 @@ const sliders: BodySlider[] = [
 export interface BodyProportions {
   height: number;
   chest: number;
+  waist: number;
   hips: number;
   legs: number;
 }

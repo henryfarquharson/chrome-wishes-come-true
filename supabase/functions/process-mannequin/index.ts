@@ -98,10 +98,11 @@ CRITICAL RULES:
 
     } else if (action === "reshape-body") {
       const { mannequinImage, gender, proportions } = body;
-      const { height, chest, hips, legs } = proportions;
+      const { height, chest, waist, hips, legs } = proportions;
       const prompt = `Edit this mannequin/doll image to adjust body proportions: 
 - Overall height scale: ${height}% (${height > 100 ? "taller" : height < 100 ? "shorter" : "normal"})
 - Chest/torso width: ${chest}% (${chest > 100 ? "wider chest" : chest < 100 ? "narrower chest" : "normal"})
+- Waist width: ${waist}% (${waist > 100 ? "wider waist" : waist < 100 ? "narrower waist" : "normal"})
 - Hip width: ${hips}% (${hips > 100 ? "wider hips" : hips < 100 ? "narrower hips" : "normal"})
 - Leg length: ${legs}% (${legs > 100 ? "longer legs" : legs < 100 ? "shorter legs" : "normal"})
 Keep the same style, pose, clothing, and skin color. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.
