@@ -65,20 +65,24 @@ serve(async (req) => {
       const { faceImage, mannequinImage, gender } = body;
       console.log("Face image length:", faceImage?.length || 0, "Mannequin length:", mannequinImage?.length || 0);
       
-      const prompt = `You are a photo editing AI. I'm giving you two images:
-1. First image: A mannequin/doll figure (off-white, featureless head)
-2. Second image: A person's face photo
+      const prompt = `You are an expert 3D mannequin renderer. I'm giving you two images:
+1. First image: A smooth, off-white/cream colored store mannequin doll figure with a featureless head
+2. Second image: A real person's face photo
 
-Your task: Replace the mannequin's blank/featureless head with the person's face from the second photo. 
+Your task: Create a MANNEQUIN-STYLE version of this person's face and place it on the mannequin body.
 
-Requirements:
-- The person's face must be clearly recognizable - preserve ALL facial features exactly (eyes, nose, mouth, jawline, hair)
-- Scale and position the face naturally on the mannequin's head
-- Match the lighting direction and intensity to the mannequin image
-- Blend the skin tone of the face smoothly into the mannequin's neck area
-- Keep the mannequin's body, pose, and clothing completely unchanged
-- The result should look like a realistic photo of this person standing in the mannequin's pose
-- Preserve the person's hair style and color from the face photo`;
+CRITICAL RULES:
+- Do NOT paste the real photo onto the mannequin. Instead, RENDER the face in the same smooth, matte, off-white/cream plastic mannequin style as the body
+- The face should look like a SCULPTED mannequin version of the person - same facial structure, hair shape, but rendered as smooth plastic/resin material
+- The skin color of the face MUST exactly match the off-white/cream color of the mannequin body - no realistic human skin tones
+- The face should have the same matte, non-reflective finish as the mannequin body
+- Scale the head proportionally to the mannequin body size - it should look like one continuous mannequin figure
+- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's hairstyle
+- Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
+- The final result should look like a single cohesive mannequin figure that was sculpted to resemble this person
+- No seams, color transitions, or visible joins between head and body`;
+
+
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
