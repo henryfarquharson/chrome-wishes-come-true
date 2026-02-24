@@ -564,7 +564,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
             {/* Face upload button */}
             <div className="absolute top-[2%] left-1/2 -translate-x-1/2 w-[22%] aspect-square">
-              {!currentMannequin && !isProcessing && (
+              {!currentMannequin && !isProcessing && !faceImage && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full h-full rounded-full border-2 border-dashed border-muted-foreground/40 hover:border-foreground/60 transition-colors flex items-center justify-center bg-secondary/50"
