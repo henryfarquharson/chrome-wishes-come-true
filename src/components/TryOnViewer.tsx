@@ -4,7 +4,6 @@ import {
   RotateCcw,
   ShoppingBag,
   User,
-  Loader2,
   Camera,
   SlidersHorizontal,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
 import BodyCustomizer, { type BodyProportions } from "./BodyCustomizer";
+import ProcessingOverlay, { type ProcessingStep } from "./ProcessingOverlay";
 import type { ProfileData } from "./ProfileSetup";
 
 interface TryOnViewerProps {
@@ -29,7 +29,6 @@ const defaultProportions: BodyProportions = {
   legs: 100,
 };
 
-/** Convert a local asset path to a base64 data URL */
 async function assetToBase64(src: string): Promise<string> {
   if (src.startsWith("data:")) return src;
   const res = await fetch(src);
@@ -42,27 +41,52 @@ async function assetToBase64(src: string): Promise<string> {
   });
 }
 
+const MAX_RETRIES = 2;
+
+async function callWithRetry(
+  body: Record<string, unknown>,
+  retries = MAX_RETRIES
+): Promise<string> {
+  try {
+    const { data, error } = await supabase.functions.invoke("process-mannequin", { body });
+    if (error) throw new Error(error.message || "Request failed");
+    if (data?.error) throw new Error(data.error);
+    return data.imageUrl as string;
+  } catch (err: any) {
+    if (retries > 0 && !err.message?.includes("Usage limit") && !err.message?.includes("402")) {
+      console.log(`Retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
+      await new Promise((r) => setTimeout(r, 1500));
+      return callWithRetry(body, retries - 1);
+    }
+    throw err;
+  }
+}
+
 const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
   const [proportions, setProportions] = useState<BodyProportions>(defaultProportions);
   const [showSliders, setShowSliders] = useState(false);
-  const [isBlending, setIsBlending] = useState(false);
-  const [isReshaping, setIsReshaping] = useState(false);
   const [currentMannequin, setCurrentMannequin] = useState<string | null>(null);
+  const [steps, setSteps] = useState<ProcessingStep[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastFailedAction, setLastFailedAction] = useState<(() => void) | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const baseDoll = profile.gender === "female" ? dollFemale : dollMale;
   const displayImage = currentMannequin || baseDoll;
+  const isProcessing = steps.some((s) => s.status === "active");
 
-  const callProcessMannequin = async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("process-mannequin", { body });
-    if (error) throw new Error(error.message || "Failed to process image");
-    if (data?.error) throw new Error(data.error);
-    return data.imageUrl as string;
+  const updateStep = (id: string, status: ProcessingStep["status"]) => {
+    setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  };
+
+  const clearProcessing = () => {
+    setSteps([]);
+    setErrorMessage(null);
+    setLastFailedAction(null);
   };
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,87 +94,162 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = async () => {
+    reader.onloadend = () => {
       const faceDataUrl = reader.result as string;
       setFaceImage(faceDataUrl);
-      setIsBlending(true);
-
-      try {
-        const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
-        const result = await callProcessMannequin({
-          action: "blend-face",
-          faceImage: faceDataUrl,
-          mannequinImage: mannequinBase64,
-          gender: profile.gender,
-        });
-        setCurrentMannequin(result);
-        toast.success("Face blended successfully!");
-      } catch (err: any) {
-        console.error("Face blend error:", err);
-        toast.error(err.message || "Failed to blend face");
-      } finally {
-        setIsBlending(false);
-      }
+      runFaceBlend(faceDataUrl);
     };
     reader.readAsDataURL(file);
+  };
+
+  const runFaceBlend = async (face: string) => {
+    const newSteps: ProcessingStep[] = [
+      { id: "prepare", label: "Preparing images...", status: "active" },
+      { id: "blend", label: "Blending face with AI...", status: "pending" },
+      { id: "finalize", label: "Finalizing result...", status: "pending" },
+    ];
+    setSteps(newSteps);
+    setErrorMessage(null);
+
+    try {
+      const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
+      updateStep("prepare", "done");
+      updateStep("blend", "active");
+
+      const result = await callWithRetry({
+        action: "blend-face",
+        faceImage: face,
+        mannequinImage: mannequinBase64,
+        gender: profile.gender,
+      });
+
+      updateStep("blend", "done");
+      updateStep("finalize", "active");
+      setCurrentMannequin(result);
+      updateStep("finalize", "done");
+      toast.success("Face blended successfully!");
+      setTimeout(clearProcessing, 1000);
+    } catch (err: any) {
+      console.error("Face blend error:", err);
+      const failedStep = steps.find((s) => s.status === "active")?.id || "blend";
+      updateStep(failedStep, "error");
+      setErrorMessage(err.message || "Failed to blend face");
+      setLastFailedAction(() => () => runFaceBlend(face));
+    }
   };
 
   const handleReshape = useCallback(
     (newProportions: BodyProportions) => {
       setProportions(newProportions);
-
-      // Debounce the AI call
       if (reshapeTimeout.current) clearTimeout(reshapeTimeout.current);
+
       reshapeTimeout.current = setTimeout(async () => {
-        // Only call AI if proportions differ from default
         const isDefault = Object.values(newProportions).every((v) => v === 100);
         if (isDefault) {
           setCurrentMannequin(null);
           return;
         }
 
-        setIsReshaping(true);
+        const reshapeSteps: ProcessingStep[] = [
+          { id: "prepare", label: "Preparing mannequin...", status: "active" },
+          { id: "reshape", label: "Reshaping body with AI...", status: "pending" },
+          ...(faceImage ? [{ id: "reblend", label: "Re-blending face...", status: "pending" as const }] : []),
+          { id: "finalize", label: "Finalizing...", status: "pending" },
+        ];
+        setSteps(reshapeSteps);
+        setErrorMessage(null);
+
         try {
           const mannequinBase64 = await assetToBase64(baseDoll);
-          const result = await callProcessMannequin({
+          updateStep("prepare", "done");
+          updateStep("reshape", "active");
+
+          const result = await callWithRetry({
             action: "reshape-body",
             mannequinImage: mannequinBase64,
             gender: profile.gender,
             proportions: newProportions,
           });
+          updateStep("reshape", "done");
           setCurrentMannequin(result);
 
-          // If user has a face, re-blend it on the reshaped body
           if (faceImage) {
-            const blended = await callProcessMannequin({
+            updateStep("reblend", "active");
+            const blended = await callWithRetry({
               action: "blend-face",
               faceImage,
               mannequinImage: result,
               gender: profile.gender,
             });
+            updateStep("reblend", "done");
             setCurrentMannequin(blended);
           }
+
+          updateStep("finalize", "active");
+          updateStep("finalize", "done");
+          toast.success("Body reshaped!");
+          setTimeout(clearProcessing, 1000);
         } catch (err: any) {
           console.error("Reshape error:", err);
-          toast.error(err.message || "Failed to reshape body");
-        } finally {
-          setIsReshaping(false);
+          setErrorMessage(err.message || "Failed to reshape body");
+          setSteps((prev) =>
+            prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
+          );
+          setLastFailedAction(() => () => handleReshape(newProportions));
         }
       }, 1200);
     },
     [baseDoll, faceImage, profile.gender]
   );
 
-  const handleTryOn = () => {
+  const handleTryOn = async () => {
     if (!productUrl) return;
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setHasProduct(true);
-    }, 2500);
+    runTryOn(productUrl);
   };
 
-  const aiWorking = isBlending || isReshaping;
+  const runTryOn = async (url: string) => {
+    const tryOnSteps: ProcessingStep[] = [
+      { id: "fetch", label: "Fetching product image...", status: "active" },
+      { id: "analyze", label: "Analyzing clothing...", status: "pending" },
+      { id: "fit", label: "Fitting to your body...", status: "pending" },
+      { id: "render", label: "Rendering final look...", status: "pending" },
+    ];
+    setSteps(tryOnSteps);
+    setErrorMessage(null);
+
+    try {
+      const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
+      updateStep("fetch", "done");
+      updateStep("analyze", "active");
+
+      // Small delay to show step progression
+      await new Promise((r) => setTimeout(r, 300));
+      updateStep("analyze", "done");
+      updateStep("fit", "active");
+
+      const result = await callWithRetry({
+        action: "try-on",
+        mannequinImage: mannequinBase64,
+        productImageUrl: url,
+        gender: profile.gender,
+      });
+
+      updateStep("fit", "done");
+      updateStep("render", "active");
+      setCurrentMannequin(result);
+      setHasProduct(true);
+      updateStep("render", "done");
+      toast.success("Clothing fitted!");
+      setTimeout(clearProcessing, 1000);
+    } catch (err: any) {
+      console.error("Try-on error:", err);
+      setErrorMessage(err.message || "Failed to fit clothing");
+      setSteps((prev) =>
+        prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
+      );
+      setLastFailedAction(() => () => runTryOn(url));
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -190,9 +289,9 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               className="max-h-[380px] object-contain"
             />
 
-            {/* Face upload button (top of mannequin head) */}
+            {/* Face upload button */}
             <div className="absolute top-[2%] left-1/2 -translate-x-1/2 w-[22%] aspect-square">
-              {!currentMannequin && (
+              {!currentMannequin && !isProcessing && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full h-full rounded-full border-2 border-dashed border-muted-foreground/40 hover:border-foreground/60 transition-colors flex items-center justify-center bg-secondary/50"
@@ -202,8 +301,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               )}
             </div>
 
-            {/* Re-upload face button when face is blended */}
-            {currentMannequin && (
+            {currentMannequin && !isProcessing && (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute top-2 right-2 p-1.5 rounded-md bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
@@ -222,29 +320,30 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             />
           </div>
 
-          {/* AI processing overlay */}
-          {(aiWorking || isProcessing) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 text-foreground animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  {isBlending
-                    ? "Blending your face..."
-                    : isReshaping
-                    ? "Reshaping body..."
-                    : "Fitting garment..."}
-                </span>
-              </div>
-            </div>
+          {/* Processing overlay with progress */}
+          {steps.length > 0 && (
+            <ProcessingOverlay
+              steps={steps}
+              errorMessage={errorMessage}
+              onRetry={
+                lastFailedAction
+                  ? () => {
+                      lastFailedAction();
+                    }
+                  : undefined
+              }
+            />
           )}
 
           {/* Rotation controls */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-              <RotateCcw className="w-3 h-3" />
-              Rotate
-            </button>
-          </div>
+          {!isProcessing && steps.length === 0 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" />
+                Rotate
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Sliders panel */}
@@ -259,7 +358,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       </div>
 
       {/* Product info bar */}
-      {hasProduct && (
+      {hasProduct && !isProcessing && (
         <div className="mx-4 mb-2 bg-secondary rounded-xl p-3 animate-slide-up">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -284,6 +383,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               onChange={(e) => setProductUrl(e.target.value)}
               placeholder="Paste clothing product URL..."
               className="pl-9 bg-secondary border-border/50 text-sm"
+              disabled={isProcessing}
             />
           </div>
           <Button
