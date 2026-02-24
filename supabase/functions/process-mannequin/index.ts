@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 async function callAI(apiKey: string, messages: any[]) {
+  console.log("Calling AI gateway...");
   const response = await fetch(
     "https://ai.gateway.lovable.dev/v1/chat/completions",
     {
@@ -32,11 +33,16 @@ async function callAI(apiKey: string, messages: any[]) {
   }
 
   const data = await response.json();
+  console.log("AI response received, checking for image...");
+  
   const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
   if (!imageUrl) {
-    console.error("No image in response:", JSON.stringify(data).slice(0, 500));
-    throw { status: 500, message: "AI did not return an image. Please try again." };
+    const textContent = data.choices?.[0]?.message?.content || "";
+    console.error("No image in response. Text:", textContent.slice(0, 200));
+    throw { status: 500, message: "AI could not generate the image. Try a different photo or try again." };
   }
+  
+  console.log("Image received successfully, length:", imageUrl.length);
   return imageUrl;
 }
 
@@ -51,12 +57,29 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action } = body;
+    console.log(`Processing action: ${action}`);
 
     let imageUrl: string;
 
     if (action === "blend-face") {
       const { faceImage, mannequinImage, gender } = body;
-      const prompt = `Take the mannequin/doll image and seamlessly blend the person's face from the second image onto the mannequin's head. Make it look natural and realistic - match skin tones, lighting, and proportions. The face should look like it belongs on the mannequin body. Keep the mannequin's body, pose, and clothing exactly the same. Only replace the head/face area.`;
+      console.log("Face image length:", faceImage?.length || 0, "Mannequin length:", mannequinImage?.length || 0);
+      
+      const prompt = `You are a photo editing AI. I'm giving you two images:
+1. First image: A mannequin/doll figure (off-white, featureless head)
+2. Second image: A person's face photo
+
+Your task: Replace the mannequin's blank/featureless head with the person's face from the second photo. 
+
+Requirements:
+- The person's face must be clearly recognizable - preserve ALL facial features exactly (eyes, nose, mouth, jawline, hair)
+- Scale and position the face naturally on the mannequin's head
+- Match the lighting direction and intensity to the mannequin image
+- Blend the skin tone of the face smoothly into the mannequin's neck area
+- Keep the mannequin's body, pose, and clothing completely unchanged
+- The result should look like a realistic photo of this person standing in the mannequin's pose
+- Preserve the person's hair style and color from the face photo`;
+
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
         content: [
@@ -75,6 +98,7 @@ serve(async (req) => {
 - Hip width: ${hips}% (${hips > 100 ? "wider hips" : hips < 100 ? "narrower hips" : "normal"})
 - Leg length: ${legs}% (${legs > 100 ? "longer legs" : legs < 100 ? "shorter legs" : "normal"})
 Keep the same style, pose, clothing, skin color, and background. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.`;
+      
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
         content: [
@@ -85,38 +109,47 @@ Keep the same style, pose, clothing, skin color, and background. Only adjust the
 
     } else if (action === "try-on") {
       const { mannequinImage, productImageUrl, gender } = body;
-      
-      // Step 1: Fetch the product image if it's a URL (not base64)
-      let productImage = productImageUrl;
-      if (productImageUrl && !productImageUrl.startsWith("data:")) {
-        // Use AI to extract and understand the clothing from the product page/image URL
-        // We pass the URL directly - Gemini can handle URLs
-        productImage = productImageUrl;
-      }
+      console.log("Try-on with product URL:", productImageUrl?.slice(0, 100));
 
-      const prompt = `You are a virtual try-on AI. Take the clothing item shown in the second image and realistically place it on the mannequin in the first image. 
-The clothing should:
-- Fit naturally on the mannequin's body shape and proportions
-- Show realistic draping, folds, and shadows
-- Maintain the clothing's original color, pattern, and texture
-- Replace the mannequin's current clothing with the new garment
-- Look like a real photo of someone wearing this clothing
-Keep the mannequin's face, skin, pose, and body shape exactly the same. Only change what they're wearing.`;
+      const prompt = `You are a virtual try-on AI. I'm giving you two images:
+1. First image: A person/mannequin figure
+2. Second image: A clothing product photo
+
+Your task: Dress the person/mannequin in the clothing item from the second image.
+
+Requirements:
+- Identify what type of clothing it is (shirt, pants, dress, jacket, etc.)
+- Place the clothing realistically on the mannequin's body
+- Show natural fabric draping, wrinkles, and shadows
+- Maintain the clothing's exact color, pattern, texture, and design details
+- If it's a top: replace the mannequin's current top/chest covering
+- If it's pants: replace the mannequin's current bottom covering  
+- If it's a full outfit: replace everything
+- Keep the person's face, skin, and body shape exactly the same
+- The final image should look like a real photo of someone wearing this clothing`;
+
+      const content: any[] = [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: mannequinImage } },
+      ];
+
+      // If it's a URL, pass it directly (Gemini can fetch URLs)
+      if (productImageUrl.startsWith("http")) {
+        content.push({ type: "image_url", image_url: { url: productImageUrl } });
+      } else {
+        content.push({ type: "image_url", image_url: { url: productImageUrl } });
+      }
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: mannequinImage } },
-          { type: "image_url", image_url: { url: productImage } },
-        ],
+        content,
       }]);
 
     } else {
       throw { status: 400, message: "Invalid action" };
     }
 
-    console.log(`Successfully processed ${action} request`);
+    console.log(`Successfully processed ${action}`);
     return new Response(
       JSON.stringify({ imageUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -124,7 +157,7 @@ Keep the mannequin's face, skin, pose, and body shape exactly the same. Only cha
   } catch (e: any) {
     console.error("process-mannequin error:", e);
     const status = e?.status || 500;
-    const message = e?.message || "Unknown error occurred";
+    const message = e?.message || "Something went wrong. Please try again.";
     return new Response(
       JSON.stringify({ error: message }),
       { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
