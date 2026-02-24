@@ -74,16 +74,16 @@ Your task: Create a MANNEQUIN-STYLE version of this person's face and place it o
 CRITICAL RULES:
 - Do NOT paste the real photo onto the mannequin. Instead, RENDER the face in the same smooth, matte, off-white/cream plastic mannequin style as the body
 - The face should look like a SCULPTED mannequin version of the person - same facial structure, hair shape, but rendered as smooth plastic/resin material
-- The skin color of the face MUST exactly match the off-white/cream color of the mannequin body - no realistic human skin tones
-- The face should have the same matte, non-reflective finish as the mannequin body
-- EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. The eyes should have colored irises, dark pupils, and subtle painted eyelashes — like a high-end fashion mannequin or Barbie doll. Do NOT leave blank/featureless eye sockets.
+- UNIFORM SKIN COLOR: The ENTIRE mannequin body (face, neck, torso, arms, hands, legs, feet) MUST be ONE single uniform off-white/cream color with absolutely NO patches, blotches, spots, streaks, or color variation. The skin must look like it was molded from a single piece of smooth plastic. Do NOT add any darker or lighter spots anywhere. No sunscreen-like white patches, no tan spots, no discoloration of any kind.
+- The face should have the same matte, non-reflective finish as the body
+- EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. The eyes should have colored irises, dark pupils, and subtle painted eyelashes — like a high-end fashion mannequin. Do NOT leave blank/featureless eye sockets.
 - LIPS: Keep the lips the same smooth, matte, off-white/cream color as the rest of the mannequin skin. Do NOT add any color or paint to the lips.
 - Scale the head proportionally to the mannequin body size - it should look like one continuous mannequin figure
-- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR. If the person has black hair, the mannequin hair must be black. If blonde, it must be blonde. Preserve the real hair color exactly — do NOT make it the same cream/off-white as the mannequin skin.
+- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR. Preserve the real hair color exactly — do NOT make it the same cream/off-white as the mannequin skin.
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
-- The final result should look like a single cohesive mannequin figure that was sculpted to resemble this person
-- No seams, color transitions, or visible joins between head and body
-- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation. Every pixel that is not part of the mannequin figure must be exactly #d5d3d0.
+- The final result should look like a single cohesive mannequin figure sculpted from ONE uniform piece of plastic
+- No seams, color transitions, patches, or visible joins anywhere on the body
+- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows on the background, no variation.
 - FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input mannequin image. Do NOT crop or zoom in.
 - OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 
