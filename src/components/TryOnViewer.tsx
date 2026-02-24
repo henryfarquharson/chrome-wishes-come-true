@@ -356,7 +356,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
-          FitVision
+          Quin Fit
         </h1>
         <div className="flex items-center gap-2">
           <button
