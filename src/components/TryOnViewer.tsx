@@ -152,7 +152,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const [savingToCloset, setSavingToCloset] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
-  const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  
   const hasAutoBlended = useRef(false);
 
   const baseDoll = profile.gender === "female" ? dollFemale : dollMale;
@@ -227,76 +227,79 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
     }
   };
 
-  const handleReshape = useCallback(
+  const handleProportionChange = useCallback(
     (newProportions: BodyProportions) => {
       setProportions(newProportions);
-      if (reshapeTimeout.current) clearTimeout(reshapeTimeout.current);
+      // CSS-only preview — no AI call
+    },
+    []
+  );
 
-      reshapeTimeout.current = setTimeout(async () => {
-        const defaults = getDefaults(profile.gender);
-        const isDefault = Object.keys(newProportions).every(
-          (k) => newProportions[k as keyof BodyProportions] === defaults[k as keyof BodyProportions]
-        );
-        if (isDefault) {
-          setCurrentMannequin(null);
-          return;
+  const handleSaveReshape = useCallback(
+    async (newProportions: BodyProportions) => {
+      const defaults = getDefaults(profile.gender);
+      const isDefault = Object.keys(newProportions).every(
+        (k) => newProportions[k as keyof BodyProportions] === defaults[k as keyof BodyProportions]
+      );
+      if (isDefault) {
+        setCurrentMannequin(null);
+        return;
+      }
+
+      const reshapeSteps: ProcessingStep[] = [
+        { id: "prepare", label: "Preparing mannequin...", status: "active" },
+        { id: "reshape", label: "Reshaping body with AI...", status: "pending" },
+        ...(faceImage ? [{ id: "reblend", label: "Re-blending face...", status: "pending" as const }] : []),
+        { id: "finalize", label: "Finalizing...", status: "pending" },
+      ];
+      setSteps(reshapeSteps);
+      setErrorMessage(null);
+
+      try {
+        const mannequinBase64 = await compressImage(await assetToBase64(baseDoll), 800);
+        updateStep("prepare", "done");
+        updateStep("reshape", "active");
+
+        const result = await callWithRetry({
+          action: "reshape-body",
+          mannequinImage: mannequinBase64,
+          gender: profile.gender,
+          proportions: newProportions,
+        });
+        updateStep("reshape", "done");
+        setCurrentMannequin(result);
+        if (!faceImage) {
+          setBaseMannequinState(result);
+          onSaveMannequin?.(result);
         }
 
-        const reshapeSteps: ProcessingStep[] = [
-          { id: "prepare", label: "Preparing mannequin...", status: "active" },
-          { id: "reshape", label: "Reshaping body with AI...", status: "pending" },
-          ...(faceImage ? [{ id: "reblend", label: "Re-blending face...", status: "pending" as const }] : []),
-          { id: "finalize", label: "Finalizing...", status: "pending" },
-        ];
-        setSteps(reshapeSteps);
-        setErrorMessage(null);
-
-        try {
-          const mannequinBase64 = await compressImage(await assetToBase64(baseDoll), 800);
-          updateStep("prepare", "done");
-          updateStep("reshape", "active");
-
-          const result = await callWithRetry({
-            action: "reshape-body",
-            mannequinImage: mannequinBase64,
+        if (faceImage) {
+          updateStep("reblend", "active");
+          const compressedFace = await compressImage(faceImage, 512);
+          const blended = await callWithRetry({
+            action: "blend-face",
+            faceImage: compressedFace,
+            mannequinImage: result,
             gender: profile.gender,
-            proportions: newProportions,
           });
-          updateStep("reshape", "done");
-          setCurrentMannequin(result);
-          if (!faceImage) {
-            setBaseMannequinState(result);
-            onSaveMannequin?.(result);
-          }
-
-          if (faceImage) {
-            updateStep("reblend", "active");
-            const compressedFace = await compressImage(faceImage, 512);
-            const blended = await callWithRetry({
-              action: "blend-face",
-              faceImage: compressedFace,
-              mannequinImage: result,
-              gender: profile.gender,
-            });
-            updateStep("reblend", "done");
-            setCurrentMannequin(blended);
-            setBaseMannequinState(blended);
-            onSaveMannequin?.(blended);
-          }
-
-          updateStep("finalize", "active");
-          updateStep("finalize", "done");
-          toast.success("Body reshaped!");
-          setTimeout(clearProcessing, 1000);
-        } catch (err: any) {
-          console.error("Reshape error:", err);
-          setErrorMessage(err.message || "Failed to reshape body");
-          setSteps((prev) =>
-            prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
-          );
-          setLastFailedAction(() => () => handleReshape(newProportions));
+          updateStep("reblend", "done");
+          setCurrentMannequin(blended);
+          setBaseMannequinState(blended);
+          onSaveMannequin?.(blended);
         }
-      }, 1200);
+
+        updateStep("finalize", "active");
+        updateStep("finalize", "done");
+        toast.success("Body reshaped!");
+        setTimeout(clearProcessing, 1000);
+      } catch (err: any) {
+        console.error("Reshape error:", err);
+        setErrorMessage(err.message || "Failed to reshape body");
+        setSteps((prev) =>
+          prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
+        );
+        setLastFailedAction(() => () => handleSaveReshape(newProportions));
+      }
     },
     [baseDoll, faceImage, profile.gender]
   );
@@ -599,7 +602,12 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
             <p className="text-[11px] font-sans font-semibold text-foreground mb-3 uppercase tracking-wider">
               Body
             </p>
-            <BodyCustomizer proportions={proportions} onChange={handleReshape} />
+            <BodyCustomizer
+              proportions={proportions}
+              onChange={handleProportionChange}
+              onSave={handleSaveReshape}
+              isSaving={isProcessing}
+            />
           </div>
         )}
 
