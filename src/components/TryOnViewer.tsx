@@ -1,9 +1,18 @@
-import { useState } from "react";
-import { Link2, RotateCcw, ShoppingBag, User, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
+import {
+  Link2,
+  RotateCcw,
+  ShoppingBag,
+  User,
+  Loader2,
+  Camera,
+  SlidersHorizontal,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
+import BodyCustomizer, { type BodyProportions } from "./BodyCustomizer";
 import type { ProfileData } from "./ProfileSetup";
 
 interface TryOnViewerProps {
@@ -11,10 +20,21 @@ interface TryOnViewerProps {
   onReset: () => void;
 }
 
+const defaultProportions: BodyProportions = {
+  height: 100,
+  chest: 100,
+  hips: 100,
+  legs: 100,
+};
+
 const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasProduct, setHasProduct] = useState(false);
+  const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
+  const [proportions, setProportions] = useState<BodyProportions>(defaultProportions);
+  const [showSliders, setShowSliders] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dollImage = profile.gender === "female" ? dollFemale : dollMale;
 
@@ -27,32 +47,116 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     }, 2500);
   };
 
+  const handleFaceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setFaceImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Calculate mannequin transform based on proportions
+  const bodyStyle = {
+    transform: `scaleY(${proportions.height / 100})`,
+    transformOrigin: "bottom center",
+  };
+
+  // Upper body (chest) scaling
+  const upperBodyStyle = {
+    transform: `scaleX(${proportions.chest / 100})`,
+    transformOrigin: "center",
+  };
+
+  // Clip paths to simulate body section scaling
+  const mannequinScale = proportions.height / 100;
+
   return (
     <div className="flex flex-col h-full bg-card">
-      {/* Header - sans-serif, no logo */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
           FitVision
         </h1>
-        <button
-          onClick={onReset}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <User className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSliders(!showSliders)}
+            className={`p-1.5 rounded-md transition-colors ${
+              showSliders
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onReset}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <User className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Body viewer */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30">
-        <div className="relative z-10">
-          <img
-            src={dollImage}
-            alt="Your virtual doll"
-            className="max-h-[380px] object-contain"
-          />
+      {/* Main content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Body viewer */}
+        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30">
+          <div
+            className="relative z-10"
+            style={{ transform: `scale(${mannequinScale})`, transformOrigin: "bottom center" }}
+          >
+            {/* Mannequin body */}
+            <div
+              style={{
+                transform: `scaleX(${proportions.chest / 100})`,
+                transformOrigin: "center top",
+              }}
+            >
+              <img
+                src={dollImage}
+                alt="Your virtual doll"
+                className="max-h-[380px] object-contain"
+              />
+            </div>
+
+            {/* Face overlay */}
+            <div className="absolute top-[2%] left-1/2 -translate-x-1/2 w-[22%] aspect-square">
+              {faceImage ? (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-full rounded-full overflow-hidden border-2 border-primary/30 hover:border-primary transition-colors group"
+                >
+                  <img
+                    src={faceImage}
+                    alt="Your face"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-background/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                    <Camera className="w-4 h-4 text-foreground" />
+                  </div>
+                </button>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-full rounded-full border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 transition-colors flex items-center justify-center bg-secondary/50"
+                >
+                  <Camera className="w-4 h-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFaceUpload}
+              className="hidden"
+            />
+          </div>
 
           {isProcessing && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 text-foreground animate-spin" />
                 <span className="text-sm text-muted-foreground">
@@ -61,15 +165,28 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               </div>
             </div>
           )}
+
+          {/* Rotation controls */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              <RotateCcw className="w-3 h-3" />
+              Rotate
+            </button>
+          </div>
         </div>
 
-        {/* Rotation controls */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
-            <RotateCcw className="w-3 h-3" />
-            Rotate
-          </button>
-        </div>
+        {/* Sliders panel */}
+        {showSliders && (
+          <div className="w-[160px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up">
+            <p className="text-[11px] font-sans font-semibold text-foreground mb-3 uppercase tracking-wider">
+              Body
+            </p>
+            <BodyCustomizer
+              proportions={proportions}
+              onChange={setProportions}
+            />
+          </div>
+        )}
       </div>
 
       {/* Product info bar */}
@@ -81,11 +198,11 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium font-sans truncate">Product loaded</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {productUrl}
-              </p>
+              <p className="text-xs text-muted-foreground truncate">{productUrl}</p>
             </div>
-            <span className="text-xs font-sans font-medium text-foreground">Fitted ✓</span>
+            <span className="text-xs font-sans font-medium text-foreground">
+              Fitted ✓
+            </span>
           </div>
         </div>
       )}
