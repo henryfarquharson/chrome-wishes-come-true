@@ -8,6 +8,8 @@ import {
   SlidersHorizontal,
   Upload,
   ImageIcon,
+  LogOut,
+  Shirt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,7 @@ import type { ProfileData } from "./ProfileSetup";
 interface TryOnViewerProps {
   profile: ProfileData;
   onReset: () => void;
+  onSaveMannequin?: (mannequinImage: string) => void;
 }
 
 // Will be set based on gender in the component
@@ -111,7 +114,7 @@ const ProductLoadedBar = ({ productUrl, onDismiss }: { productUrl: string; onDis
   );
 };
 
-const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
+const TryOnViewer = ({ profile, onReset, onSaveMannequin }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
@@ -126,7 +129,8 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     };
   });
   const [showSliders, setShowSliders] = useState(false);
-  const [currentMannequin, setCurrentMannequin] = useState<string | null>(null);
+  const [currentMannequin, setCurrentMannequin] = useState<string | null>(profile.baseMannequin || null);
+  const [baseMannequinState, setBaseMannequinState] = useState<string | null>(profile.baseMannequin || null);
   const [steps, setSteps] = useState<ProcessingStep[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedAction, setLastFailedAction] = useState<(() => void) | null>(null);
@@ -193,6 +197,8 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       updateStep("blend", "done");
       updateStep("finalize", "active");
       setCurrentMannequin(result);
+      setBaseMannequinState(result);
+      onSaveMannequin?.(result);
       updateStep("finalize", "done");
       toast.success("Face blended successfully!");
       setTimeout(clearProcessing, 1000);
@@ -243,6 +249,10 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
           });
           updateStep("reshape", "done");
           setCurrentMannequin(result);
+          if (!faceImage) {
+            setBaseMannequinState(result);
+            onSaveMannequin?.(result);
+          }
 
           if (faceImage) {
             updateStep("reblend", "active");
@@ -255,6 +265,8 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             });
             updateStep("reblend", "done");
             setCurrentMannequin(blended);
+            setBaseMannequinState(blended);
+            onSaveMannequin?.(blended);
           }
 
           updateStep("finalize", "active");
@@ -355,6 +367,15 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     }
   };
 
+  const handleUndress = () => {
+    // Reset to base mannequin (with face/dimensions but no clothes)
+    setCurrentMannequin(baseMannequinState || baseDoll);
+    setHasProduct(false);
+    setProductImage(null);
+    setProductUrl("");
+    toast.success("Clothes removed — ready for a new outfit!");
+  };
+
   return (
     <div className="flex flex-col h-full" style={{ background: '#d5d3d0' }}>
       {/* Header */}
@@ -376,8 +397,19 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
           <button
             onClick={onReset}
             className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Edit profile"
           >
             <User className="w-4 h-4" />
+          </button>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.href = "/auth";
+            }}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -449,9 +481,18 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             />
           )}
 
-          {/* Rotation controls */}
+          {/* Bottom controls */}
           {!isProcessing && steps.length === 0 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              {hasProduct && (
+                <button
+                  onClick={handleUndress}
+                  className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1"
+                >
+                  <Shirt className="w-3 h-3" />
+                  Undress
+                </button>
+              )}
               <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1">
                 <RotateCcw className="w-3 h-3" />
                 Rotate

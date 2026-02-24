@@ -23,6 +23,7 @@ export interface ProfileData {
   chest: string;
   waist: string;
   hips: string;
+  baseMannequin?: string | null;
 }
 
 const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
