@@ -80,7 +80,10 @@ CRITICAL RULES:
 - Hair should be rendered as a sculpted mannequin-style hair piece matching the person's hairstyle
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
 - The final result should look like a single cohesive mannequin figure that was sculpted to resemble this person
-- No seams, color transitions, or visible joins between head and body`;
+- No seams, color transitions, or visible joins between head and body
+- BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+- FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input mannequin image. Do NOT crop or zoom in.
+- OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 
 
 
@@ -101,7 +104,10 @@ CRITICAL RULES:
 - Chest/torso width: ${chest}% (${chest > 100 ? "wider chest" : chest < 100 ? "narrower chest" : "normal"})
 - Hip width: ${hips}% (${hips > 100 ? "wider hips" : hips < 100 ? "narrower hips" : "normal"})
 - Leg length: ${legs}% (${legs > 100 ? "longer legs" : legs < 100 ? "shorter legs" : "normal"})
-Keep the same style, pose, clothing, skin color, and background. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.`;
+Keep the same style, pose, clothing, and skin color. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.
+BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input image. Do NOT crop or zoom in.
+OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input image.`;
       
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
@@ -130,7 +136,10 @@ Requirements:
 - If it's pants: replace the mannequin's current bottom covering  
 - If it's a full outfit: replace everything
 - Keep the person's face, skin, and body shape exactly the same
-- The final image should look like a real photo of someone wearing this clothing`;
+- The final image should look like a real photo of someone wearing this clothing
+- BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+- FRAMING: Show the FULL body from head to feet with the EXACT same zoom level, camera angle, and framing as the input mannequin image. Do NOT crop or zoom in on the clothing area.
+- OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
