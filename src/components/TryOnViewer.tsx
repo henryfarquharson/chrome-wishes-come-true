@@ -352,9 +352,9 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
+    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(to bottom, #d4d0cc 0%, #b8b4af 50%, #d0ccc8 100%)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
           FitVision
         </h1>
