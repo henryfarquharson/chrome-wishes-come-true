@@ -1,0 +1,4 @@
+project_id = "ocokjiuwzznvhkbcycsm"
+
+[functions.process-mannequin]
+verify_jwt = false
