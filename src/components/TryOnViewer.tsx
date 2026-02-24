@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   RotateCcw,
   ShoppingBag,
   User,
   Camera,
-  SlidersHorizontal,
+  
   Upload,
   ImageIcon,
   LogOut,
@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
-import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
+import { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
 import ProcessingOverlay, { type ProcessingStep } from "./ProcessingOverlay";
 import OnboardingTutorial from "./OnboardingTutorial";
 import type { ProfileData } from "./ProfileSetup";
@@ -165,7 +165,8 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
-  const [savedProportions, setSavedProportions] = useState<BodyProportions>(() => {
+  const [savedProportions] = useState<BodyProportions>(() => {
+    if (profile.proportions) return { ...profile.proportions };
     const defaults = getDefaults(profile.gender);
     return {
       height: profile.height ? parseFloat(profile.height) || defaults.height : defaults.height,
@@ -175,8 +176,6 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
       legs: defaults.legs,
     };
   });
-  const [draftProportions, setDraftProportions] = useState<BodyProportions>(() => ({ ...savedProportions }));
-  const [showSliders, setShowSliders] = useState(false);
   const [currentMannequin, setCurrentMannequin] = useState<string | null>(profile.baseMannequin || null);
   const [baseMannequinState, setBaseMannequinState] = useState<string | null>(profile.baseMannequin || null);
   const [steps, setSteps] = useState<ProcessingStep[]>([]);
@@ -275,85 +274,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
     }
   };
 
-  const handleProportionChange = useCallback(
-    (newProportions: BodyProportions) => {
-      setDraftProportions(newProportions);
-      // CSS-only preview — no AI call
-    },
-    []
-  );
-
-  const handleSaveReshape = useCallback(
-    async (newProportions: BodyProportions) => {
-      setSavedProportions({ ...newProportions });
-      const defaults = getDefaults(profile.gender);
-      const isDefault = Object.keys(newProportions).every(
-        (k) => newProportions[k as keyof BodyProportions] === defaults[k as keyof BodyProportions]
-      );
-      if (isDefault) {
-        setCurrentMannequin(null);
-        return;
-      }
-
-      const reshapeSteps: ProcessingStep[] = [
-        { id: "prepare", label: "Preparing mannequin...", status: "active" },
-        { id: "reshape", label: "Reshaping body with AI...", status: "pending" },
-        ...(faceImage ? [{ id: "reblend", label: "Re-blending face...", status: "pending" as const }] : []),
-        { id: "finalize", label: "Finalizing...", status: "pending" },
-      ];
-      setSteps(reshapeSteps);
-      setErrorMessage(null);
-
-      try {
-        const mannequinBase64 = await compressImage(await assetToBase64(baseDoll), 800);
-        updateStep("prepare", "done");
-        updateStep("reshape", "active");
-
-        const result = await callWithRetry({
-          action: "reshape-body",
-          mannequinImage: mannequinBase64,
-          gender: profile.gender,
-          proportions: newProportions,
-        });
-        updateStep("reshape", "done");
-        const normalizedResult = await normalizeBackground(result);
-        setCurrentMannequin(normalizedResult);
-        if (!faceImage) {
-          setBaseMannequinState(normalizedResult);
-          onSaveMannequin?.(normalizedResult);
-        }
-
-        if (faceImage) {
-          updateStep("reblend", "active");
-          const compressedFace = await compressImage(faceImage, 512);
-          const blended = await callWithRetry({
-            action: "blend-face",
-            faceImage: compressedFace,
-            mannequinImage: result,
-            gender: profile.gender,
-          });
-          const normalizedBlended = await normalizeBackground(blended);
-          updateStep("reblend", "done");
-          setCurrentMannequin(normalizedBlended);
-          setBaseMannequinState(normalizedBlended);
-          onSaveMannequin?.(normalizedBlended);
-        }
-
-        updateStep("finalize", "active");
-        updateStep("finalize", "done");
-        toast.success("Body reshaped!");
-        setTimeout(clearProcessing, 1000);
-      } catch (err: any) {
-        console.error("Reshape error:", err);
-        setErrorMessage(err.message || "Failed to reshape body");
-        setSteps((prev) =>
-          prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
-        );
-        setLastFailedAction(() => () => handleSaveReshape(newProportions));
-      }
-    },
-    [baseDoll, faceImage, profile.gender]
-  );
+  // Reshape is now handled during onboarding; no slider panel in viewer
 
   const handleProductUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -520,25 +441,6 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
             <BookOpen className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              if (showSliders) {
-                // Closing without save — revert draft to saved
-                setDraftProportions({ ...savedProportions });
-              } else {
-                // Opening — init draft from saved
-                setDraftProportions({ ...savedProportions });
-              }
-              setShowSliders(!showSliders);
-            }}
-            className={`p-1.5 rounded-md transition-colors ${
-              showSliders
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </button>
-          <button
             onClick={onReset}
             className="text-muted-foreground hover:text-foreground transition-colors"
             title="Edit profile"
@@ -570,7 +472,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               style={{
                 transform: (() => {
                   const defaults = getDefaults(profile.gender);
-                  const p = showSliders ? draftProportions : savedProportions;
+                  const p = savedProportions;
                   const sx = ((p.chest + p.waist + p.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
                   const sy = p.height / defaults.height;
                   return `scaleX(${sx.toFixed(3)}) scaleY(${sy.toFixed(3)})`;
@@ -661,20 +563,6 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
           )}
         </div>
 
-        {/* Sliders panel */}
-        {showSliders && (
-          <div className="w-[160px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up bg-card">
-            <p className="text-[11px] font-sans font-semibold text-foreground mb-3 uppercase tracking-wider">
-              Body
-            </p>
-            <BodyCustomizer
-              proportions={draftProportions}
-              onChange={handleProportionChange}
-              onSave={handleSaveReshape}
-              isSaving={isProcessing}
-            />
-          </div>
-        )}
 
         {/* Closet panel */}
         {showCloset && (
