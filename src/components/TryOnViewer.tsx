@@ -696,7 +696,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               value={productUrl}
               onChange={(e) => { setProductUrl(e.target.value); setProductImage(null); }}
               placeholder="Upload image or paste image URL..."
-              className="pl-9 bg-card/60 backdrop-blur-sm border-border/50 text-sm"
+              className="pl-9 bg-card border-border/50 text-sm"
               disabled={isProcessing}
             />
           </div>
