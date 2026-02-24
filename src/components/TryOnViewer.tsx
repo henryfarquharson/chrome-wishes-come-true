@@ -423,11 +423,14 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               className="w-full h-full object-cover scale-105 blur-sm opacity-40"
             />
           </div>
-          <div className="relative z-10 h-full w-full overflow-hidden">
+          <div className="relative z-10 h-full w-full overflow-hidden flex items-center justify-center">
             <img
               src={displayImage}
               alt="Your virtual doll"
-              className="w-full h-full object-contain"
+              className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
+              style={{
+                transform: `scaleX(${((proportions.chest + proportions.waist + proportions.hips) / 3 / 100).toFixed(2)}) scaleY(${(proportions.height / 100).toFixed(2)})`,
+              }}
             />
 
             {/* Face upload button */}
