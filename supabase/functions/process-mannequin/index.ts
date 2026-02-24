@@ -77,8 +77,7 @@ CRITICAL RULES:
 - The skin color of the face MUST exactly match the off-white/cream color of the mannequin body - no realistic human skin tones
 - The face should have the same matte, non-reflective finish as the mannequin body
 - EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. The eyes should have colored irises, dark pupils, and subtle painted eyelashes — like a high-end fashion mannequin or Barbie doll. Do NOT leave blank/featureless eye sockets.
-- LIPS: Paint the lips with a natural, subtle color (soft pink, rose, or matching the person's lip color). The lips should look like painted mannequin lips with definition and color, NOT blank/flat/same color as the skin.
-- EYEBROWS: Render defined eyebrows matching the person's brow shape and color.
+- LIPS: Keep the lips the same smooth, matte, off-white/cream color as the rest of the mannequin skin. Do NOT add any color or paint to the lips.
 - Scale the head proportionally to the mannequin body size - it should look like one continuous mannequin figure
 - Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR. If the person has black hair, the mannequin hair must be black. If blonde, it must be blonde. Preserve the real hair color exactly — do NOT make it the same cream/off-white as the mannequin skin.
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
