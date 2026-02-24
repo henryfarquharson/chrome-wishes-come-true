@@ -81,7 +81,7 @@ CRITICAL RULES:
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
 - The final result should look like a single cohesive mannequin figure that was sculpted to resemble this person
 - No seams, color transitions, or visible joins between head and body
-- BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation. Every pixel that is not part of the mannequin figure must be exactly #d5d3d0.
 - FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input mannequin image. Do NOT crop or zoom in.
 - OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 
@@ -117,7 +117,7 @@ CRITICAL RULES:
 - Hips: ${hips}cm (${hpPct}% — ${hpPct > 100 ? "wider hips" : hpPct < 100 ? "narrower hips" : "average"})
 - Inseam/Legs: ${legs}cm (${lPct}% — ${lPct > 100 ? "longer legs" : lPct < 100 ? "shorter legs" : "average"})
 Keep the same style, pose, clothing, and skin color. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.
-BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation.
 FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input image. Do NOT crop or zoom in.
 OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input image.`;
       
@@ -149,7 +149,7 @@ Requirements:
 - If it's a full outfit: replace everything
 - Keep the person's face, skin, and body shape exactly the same
 - The final image should look like a real photo of someone wearing this clothing
-- BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
+- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation.
 - FRAMING: Show the FULL body from head to feet with the EXACT same zoom level, camera angle, and framing as the input mannequin image. Do NOT crop or zoom in on the clothing area.
 - OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 

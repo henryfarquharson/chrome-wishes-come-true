@@ -507,6 +507,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               alt="Your virtual doll"
               className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
               style={{
+                mixBlendMode: currentMannequin ? 'multiply' : 'normal',
                 transform: (() => {
                   const defaults = getDefaults(profile.gender);
                   const sx = ((proportions.chest + proportions.waist + proportions.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
