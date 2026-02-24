@@ -22,6 +22,7 @@ import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
 import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
 import ProcessingOverlay, { type ProcessingStep } from "./ProcessingOverlay";
+import OnboardingTutorial from "./OnboardingTutorial";
 import type { ProfileData } from "./ProfileSetup";
 
 interface ClosetItem {
@@ -188,6 +189,9 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const productInputRef = useRef<HTMLInputElement>(null);
   
   const hasAutoBlended = useRef(false);
+  const [showTutorial, setShowTutorial] = useState(() => {
+    return !localStorage.getItem("quin-fit-tutorial-seen");
+  });
 
   const baseDoll = profile.gender === "female" ? dollFemale : dollMale;
   const displayImage = currentMannequin || baseDoll;
@@ -357,7 +361,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
       const dataUrl = reader.result as string;
       setProductImage(dataUrl);
       setProductUrl(file.name);
-      runTryOn(dataUrl);
+      toast.success("Product loaded! Press Try On to see it on your body.");
     };
     reader.readAsDataURL(file);
   };
@@ -588,6 +592,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              capture="user"
               onChange={handleFaceUpload}
               className="hidden"
             />
@@ -599,6 +604,16 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               steps={steps}
               errorMessage={errorMessage}
               onRetry={lastFailedAction ? () => lastFailedAction() : undefined}
+            />
+          )}
+
+          {/* First-time tutorial */}
+          {showTutorial && !isProcessing && (
+            <OnboardingTutorial
+              onDismiss={() => {
+                setShowTutorial(false);
+                localStorage.setItem("quin-fit-tutorial-seen", "1");
+              }}
             />
           )}
 

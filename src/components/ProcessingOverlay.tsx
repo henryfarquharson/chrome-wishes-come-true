@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Check, Loader2 } from "lucide-react";
 
@@ -13,16 +14,38 @@ interface ProcessingOverlayProps {
   onRetry?: () => void;
 }
 
+const ESTIMATED_SECONDS_PER_STEP = 12;
+
 const ProcessingOverlay = ({ steps, errorMessage, onRetry }: ProcessingOverlayProps) => {
+  const [elapsed, setElapsed] = useState(0);
   const doneCount = steps.filter((s) => s.status === "done").length;
   const progress = steps.length > 0 ? (doneCount / steps.length) * 100 : 0;
   const hasError = steps.some((s) => s.status === "error");
+  const isActive = steps.some((s) => s.status === "active");
+
+  const totalEstimate = steps.length * ESTIMATED_SECONDS_PER_STEP;
+  const remaining = Math.max(0, totalEstimate - elapsed);
+
+  // Timer
+  useEffect(() => {
+    if (!isActive) return;
+    setElapsed(0);
+    const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
       <div className="w-[260px] space-y-4 p-4">
         {/* Progress bar */}
         <Progress value={progress} className="h-1.5" />
+
+        {/* Time estimate */}
+        {isActive && (
+          <p className="text-[11px] text-muted-foreground font-sans text-center tabular-nums">
+            ~{remaining}s remaining
+          </p>
+        )}
 
         {/* Steps */}
         <div className="space-y-2">
