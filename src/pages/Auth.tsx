@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,35 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval>>();
   const navigate = useNavigate();
+
+  // Poll for session after signup (user may verify on another device)
+  useEffect(() => {
+    if (!awaitingVerification) return;
+
+    pollRef.current = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email_confirmed_at) {
+        clearInterval(pollRef.current);
+        toast.success("Email verified! Welcome to Quin Fit!");
+        navigate("/");
+      }
+    }, 3000);
+
+    return () => clearInterval(pollRef.current);
+  }, [awaitingVerification, navigate]);
+
+  // Also listen for auth state changes (covers same-browser verification)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        navigate("/");
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +59,7 @@ const Auth = () => {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
+        setAwaitingVerification(true);
         toast.success("Check your email to confirm your account!");
       }
     } catch (err: any) {
@@ -93,10 +122,22 @@ const Auth = () => {
             </Button>
           </form>
 
+          {awaitingVerification && (
+            <div className="bg-secondary/50 rounded-lg p-4 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <Mail className="w-4 h-4 text-muted-foreground animate-pulse" />
+                <p className="text-sm font-medium text-foreground">Waiting for verification...</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Open the link in your email. This page will update automatically.
+              </p>
+            </div>
+          )}
+
           <p className="text-center text-sm text-muted-foreground">
             {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => { setIsLogin(!isLogin); setAwaitingVerification(false); }}
               className="text-foreground font-medium hover:underline"
             >
               {isLogin ? "Sign Up" : "Sign In"}
