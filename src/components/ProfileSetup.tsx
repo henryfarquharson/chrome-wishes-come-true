@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Camera, ChevronRight, Ruler, User } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, Ruler, User, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
 
 interface ProfileSetupProps {
   onComplete: (profile: ProfileData) => void;
@@ -24,6 +25,7 @@ export interface ProfileData {
   waist: string;
   hips: string;
   baseMannequin?: string | null;
+  proportions?: BodyProportions;
 }
 
 const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
@@ -35,6 +37,19 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
   const [chest, setChest] = useState("");
   const [waist, setWaist] = useState("");
   const [hips, setHips] = useState("");
+  const [proportions, setProportions] = useState<BodyProportions | null>(null);
+
+  // Initialize proportions when gender changes
+  const getCurrentProportions = (): BodyProportions => {
+    const defaults = gender === "female" ? { ...defaultFemaleCm } : { ...defaultMaleCm };
+    return proportions || {
+      height: height ? parseFloat(height) || defaults.height : defaults.height,
+      chest: chest ? parseFloat(chest) || defaults.chest : defaults.chest,
+      waist: waist ? parseFloat(waist) || defaults.waist : defaults.waist,
+      hips: hips ? parseFloat(hips) || defaults.hips : defaults.hips,
+      legs: defaults.legs,
+    };
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,14 +61,14 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
   };
 
   const handleComplete = () => {
-    onComplete({ photo, height, weight, gender, chest, waist, hips });
+    onComplete({ photo, height, weight, gender, chest, waist, hips, proportions: getCurrentProportions() });
   };
 
   return (
     <div className="flex flex-col h-full animate-slide-up">
       {/* Progress bar */}
       <div className="flex gap-1.5 px-6 pt-6 pb-4">
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-all duration-500 ${
@@ -219,6 +234,42 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
               </div>
             ))}
           </div>
+
+          <div className="mt-auto pb-6">
+            <Button
+              onClick={() => setStep(3)}
+              className="w-full gradient-primary text-primary-foreground border-0 glow-primary"
+            >
+              Continue
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="flex-1 flex flex-col px-6 gap-5 pt-4 overflow-y-auto">
+          <div className="relative text-center space-y-2">
+            <button
+              onClick={() => setStep(2)}
+              className="absolute left-0 top-1 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="text-2xl font-display font-bold">
+              <SlidersHorizontal className="inline w-5 h-5 mr-2 mb-1" />
+              Body Shape
+            </h2>
+            <p className="text-muted-foreground text-sm">
+              Fine-tune your body proportions
+            </p>
+          </div>
+
+          <BodyCustomizer
+            proportions={getCurrentProportions()}
+            onChange={(p) => setProportions(p)}
+          />
 
           <div className="mt-auto pb-6">
             <Button
