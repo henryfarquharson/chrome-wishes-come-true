@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link2, RotateCcw, ShoppingBag, Sparkles, User, Loader2 } from "lucide-react";
+import { Link2, RotateCcw, ShoppingBag, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import mannequinImage from "@/assets/mannequin.png";
+import dollMale from "@/assets/doll-male.png";
+import dollFemale from "@/assets/doll-female.png";
 import type { ProfileData } from "./ProfileSetup";
 
 interface TryOnViewerProps {
@@ -15,10 +16,11 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasProduct, setHasProduct] = useState(false);
 
+  const dollImage = profile.gender === "female" ? dollFemale : dollMale;
+
   const handleTryOn = () => {
     if (!productUrl) return;
     setIsProcessing(true);
-    // Simulate processing
     setTimeout(() => {
       setIsProcessing(false);
       setHasProduct(true);
@@ -26,17 +28,12 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
+    <div className="flex flex-col h-full bg-card">
+      {/* Header - sans-serif, no logo */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <h1 className="font-display font-bold text-sm tracking-tight">
-            FitVision
-          </h1>
-        </div>
+        <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
+          FitVision
+        </h1>
         <button
           onClick={onReset}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -46,31 +43,18 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       </div>
 
       {/* Body viewer */}
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {/* Ambient glow */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-48 h-48 rounded-full bg-primary/10 blur-[80px] animate-pulse-glow" />
-        </div>
-
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30">
         <div className="relative z-10">
-          {profile.photo ? (
-            <img
-              src={profile.photo}
-              alt="Your body"
-              className="max-h-[380px] object-contain rounded-lg"
-            />
-          ) : (
-            <img
-              src={mannequinImage}
-              alt="Virtual mannequin"
-              className="max-h-[380px] object-contain opacity-80"
-            />
-          )}
+          <img
+            src={dollImage}
+            alt="Your virtual doll"
+            className="max-h-[380px] object-contain"
+          />
 
           {isProcessing && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-lg">
               <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <Loader2 className="w-8 h-8 text-foreground animate-spin" />
                 <span className="text-sm text-muted-foreground">
                   Fitting garment...
                 </span>
@@ -81,7 +65,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
         {/* Rotation controls */}
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-          <button className="glass rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+          <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
             <RotateCcw className="w-3 h-3" />
             Rotate
           </button>
@@ -90,18 +74,18 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
       {/* Product info bar */}
       {hasProduct && (
-        <div className="mx-4 mb-2 glass rounded-xl p-3 animate-slide-up">
+        <div className="mx-4 mb-2 bg-secondary rounded-xl p-3 animate-slide-up">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
               <ShoppingBag className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium truncate">Product loaded</p>
+              <p className="text-xs font-medium font-sans truncate">Product loaded</p>
               <p className="text-xs text-muted-foreground truncate">
                 {productUrl}
               </p>
             </div>
-            <span className="text-xs font-display text-accent">Fitted ✓</span>
+            <span className="text-xs font-sans font-medium text-foreground">Fitted ✓</span>
           </div>
         </div>
       )}
@@ -115,19 +99,19 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               value={productUrl}
               onChange={(e) => setProductUrl(e.target.value)}
               placeholder="Paste clothing product URL..."
-              className="pl-9 glass border-border/50 text-sm"
+              className="pl-9 bg-secondary border-border/50 text-sm"
             />
           </div>
           <Button
             onClick={handleTryOn}
             disabled={!productUrl || isProcessing}
-            className="gradient-primary text-primary-foreground border-0 glow-primary shrink-0"
+            className="bg-foreground text-background hover:bg-foreground/90 border-0 shrink-0 font-sans"
             size="sm"
           >
             Try On
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2 text-center">
+        <p className="text-[10px] text-muted-foreground mt-2 text-center font-sans">
           Works with Zara, H&M, Nike, ASOS & more
         </p>
       </div>
