@@ -69,6 +69,40 @@ function compressImage(src: string, maxSize = 800): Promise<string> {
   });
 }
 
+/** Replace near-#d5d3d0 background pixels with exact #d5d3d0 */
+function normalizeBackground(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!src) return reject("No image source");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      // Target: #d5d3d0 = RGB(213, 211, 208)
+      const tR = 213, tG = 211, tB = 208;
+      const tolerance = 30; // pixels within this range get snapped
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        const dist = Math.abs(r - tR) + Math.abs(g - tG) + Math.abs(b - tB);
+        if (dist <= tolerance) {
+          data[i] = tR;
+          data[i + 1] = tG;
+          data[i + 2] = tB;
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => reject("Failed to load image");
+    img.src = src;
+  });
+}
+
 /** Convert a local asset path to a base64 data URL */
 async function assetToBase64(src: string): Promise<string> {
   if (src.startsWith("data:")) return src;
@@ -211,9 +245,10 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
       updateStep("blend", "done");
       updateStep("finalize", "active");
-      setCurrentMannequin(result);
-      setBaseMannequinState(result);
-      onSaveMannequin?.(result);
+      const normalized = await normalizeBackground(result);
+      setCurrentMannequin(normalized);
+      setBaseMannequinState(normalized);
+      onSaveMannequin?.(normalized);
       updateStep("finalize", "done");
       toast.success("Face blended successfully!");
       setTimeout(clearProcessing, 1000);
@@ -267,10 +302,11 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
           proportions: newProportions,
         });
         updateStep("reshape", "done");
-        setCurrentMannequin(result);
+        const normalizedResult = await normalizeBackground(result);
+        setCurrentMannequin(normalizedResult);
         if (!faceImage) {
-          setBaseMannequinState(result);
-          onSaveMannequin?.(result);
+          setBaseMannequinState(normalizedResult);
+          onSaveMannequin?.(normalizedResult);
         }
 
         if (faceImage) {
@@ -282,10 +318,11 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
             mannequinImage: result,
             gender: profile.gender,
           });
+          const normalizedBlended = await normalizeBackground(blended);
           updateStep("reblend", "done");
-          setCurrentMannequin(blended);
-          setBaseMannequinState(blended);
-          onSaveMannequin?.(blended);
+          setCurrentMannequin(normalizedBlended);
+          setBaseMannequinState(normalizedBlended);
+          onSaveMannequin?.(normalizedBlended);
         }
 
         updateStep("finalize", "active");
@@ -370,7 +407,8 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
       updateStep("fit", "done");
       updateStep("render", "active");
-      setCurrentMannequin(result);
+      const normalizedTryOn = await normalizeBackground(result);
+      setCurrentMannequin(normalizedTryOn);
       setHasProduct(true);
       updateStep("render", "done");
       toast.success("Clothing fitted!");
@@ -507,7 +545,6 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               alt="Your virtual doll"
               className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
               style={{
-                mixBlendMode: currentMannequin ? 'multiply' : 'normal',
                 transform: (() => {
                   const defaults = getDefaults(profile.gender);
                   const sx = ((proportions.chest + proportions.waist + proportions.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
