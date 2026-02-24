@@ -165,7 +165,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
-  const [proportions, setProportions] = useState<BodyProportions>(() => {
+  const [savedProportions, setSavedProportions] = useState<BodyProportions>(() => {
     const defaults = getDefaults(profile.gender);
     return {
       height: profile.height ? parseFloat(profile.height) || defaults.height : defaults.height,
@@ -175,6 +175,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
       legs: defaults.legs,
     };
   });
+  const [draftProportions, setDraftProportions] = useState<BodyProportions>(() => ({ ...savedProportions }));
   const [showSliders, setShowSliders] = useState(false);
   const [currentMannequin, setCurrentMannequin] = useState<string | null>(profile.baseMannequin || null);
   const [baseMannequinState, setBaseMannequinState] = useState<string | null>(profile.baseMannequin || null);
@@ -276,7 +277,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
   const handleProportionChange = useCallback(
     (newProportions: BodyProportions) => {
-      setProportions(newProportions);
+      setDraftProportions(newProportions);
       // CSS-only preview — no AI call
     },
     []
@@ -284,6 +285,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
   const handleSaveReshape = useCallback(
     async (newProportions: BodyProportions) => {
+      setSavedProportions({ ...newProportions });
       const defaults = getDefaults(profile.gender);
       const isDefault = Object.keys(newProportions).every(
         (k) => newProportions[k as keyof BodyProportions] === defaults[k as keyof BodyProportions]
@@ -518,7 +520,16 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
             <BookOpen className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setShowSliders(!showSliders)}
+            onClick={() => {
+              if (showSliders) {
+                // Closing without save — revert draft to saved
+                setDraftProportions({ ...savedProportions });
+              } else {
+                // Opening — init draft from saved
+                setDraftProportions({ ...savedProportions });
+              }
+              setShowSliders(!showSliders);
+            }}
             className={`p-1.5 rounded-md transition-colors ${
               showSliders
                 ? "bg-primary text-primary-foreground"
@@ -559,8 +570,9 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               style={{
                 transform: (() => {
                   const defaults = getDefaults(profile.gender);
-                  const sx = ((proportions.chest + proportions.waist + proportions.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
-                  const sy = proportions.height / defaults.height;
+                  const p = showSliders ? draftProportions : savedProportions;
+                  const sx = ((p.chest + p.waist + p.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
+                  const sy = p.height / defaults.height;
                   return `scaleX(${sx.toFixed(3)}) scaleY(${sy.toFixed(3)})`;
                 })(),
               }}
@@ -656,7 +668,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               Body
             </p>
             <BodyCustomizer
-              proportions={proportions}
+              proportions={draftProportions}
               onChange={handleProportionChange}
               onSave={handleSaveReshape}
               isSaving={isProcessing}
