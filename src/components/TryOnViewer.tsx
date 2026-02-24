@@ -193,6 +193,14 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const displayImage = currentMannequin || baseDoll;
   const isProcessing = steps.some((s) => s.status === "active");
 
+  // Auto-blend face from onboarding photo on first mount
+  useEffect(() => {
+    if (faceImage && !currentMannequin && !hasAutoBlended.current) {
+      hasAutoBlended.current = true;
+      runFaceBlend(faceImage);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateStep = (id: string, status: ProcessingStep["status"]) => {
     setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
   };
