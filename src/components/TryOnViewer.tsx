@@ -143,13 +143,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setLastFailedAction(null);
   };
 
-  // Auto-trigger face blend if user uploaded a photo during profile setup
-  useEffect(() => {
-    if (profile.photo && !hasAutoBlended.current) {
-      hasAutoBlended.current = true;
-      runFaceBlend(profile.photo);
-    }
-  }, [profile.photo]);
+  // No auto-blend: user must press "Try On" to start processing
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
