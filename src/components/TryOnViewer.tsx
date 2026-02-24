@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Link2,
   RotateCcw,
@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
 import BodyCustomizer, { type BodyProportions } from "./BodyCustomizer";
@@ -27,6 +29,19 @@ const defaultProportions: BodyProportions = {
   legs: 100,
 };
 
+/** Convert a local asset path to a base64 data URL */
+async function assetToBase64(src: string): Promise<string> {
+  if (src.startsWith("data:")) return src;
+  const res = await fetch(src);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,9 +49,97 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
   const [proportions, setProportions] = useState<BodyProportions>(defaultProportions);
   const [showSliders, setShowSliders] = useState(false);
+  const [isBlending, setIsBlending] = useState(false);
+  const [isReshaping, setIsReshaping] = useState(false);
+  const [currentMannequin, setCurrentMannequin] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
 
-  const dollImage = profile.gender === "female" ? dollFemale : dollMale;
+  const baseDoll = profile.gender === "female" ? dollFemale : dollMale;
+  const displayImage = currentMannequin || baseDoll;
+
+  const callProcessMannequin = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke("process-mannequin", { body });
+    if (error) throw new Error(error.message || "Failed to process image");
+    if (data?.error) throw new Error(data.error);
+    return data.imageUrl as string;
+  };
+
+  const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const faceDataUrl = reader.result as string;
+      setFaceImage(faceDataUrl);
+      setIsBlending(true);
+
+      try {
+        const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
+        const result = await callProcessMannequin({
+          action: "blend-face",
+          faceImage: faceDataUrl,
+          mannequinImage: mannequinBase64,
+          gender: profile.gender,
+        });
+        setCurrentMannequin(result);
+        toast.success("Face blended successfully!");
+      } catch (err: any) {
+        console.error("Face blend error:", err);
+        toast.error(err.message || "Failed to blend face");
+      } finally {
+        setIsBlending(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReshape = useCallback(
+    (newProportions: BodyProportions) => {
+      setProportions(newProportions);
+
+      // Debounce the AI call
+      if (reshapeTimeout.current) clearTimeout(reshapeTimeout.current);
+      reshapeTimeout.current = setTimeout(async () => {
+        // Only call AI if proportions differ from default
+        const isDefault = Object.values(newProportions).every((v) => v === 100);
+        if (isDefault) {
+          setCurrentMannequin(null);
+          return;
+        }
+
+        setIsReshaping(true);
+        try {
+          const mannequinBase64 = await assetToBase64(baseDoll);
+          const result = await callProcessMannequin({
+            action: "reshape-body",
+            mannequinImage: mannequinBase64,
+            gender: profile.gender,
+            proportions: newProportions,
+          });
+          setCurrentMannequin(result);
+
+          // If user has a face, re-blend it on the reshaped body
+          if (faceImage) {
+            const blended = await callProcessMannequin({
+              action: "blend-face",
+              faceImage,
+              mannequinImage: result,
+              gender: profile.gender,
+            });
+            setCurrentMannequin(blended);
+          }
+        } catch (err: any) {
+          console.error("Reshape error:", err);
+          toast.error(err.message || "Failed to reshape body");
+        } finally {
+          setIsReshaping(false);
+        }
+      }, 1200);
+    },
+    [baseDoll, faceImage, profile.gender]
+  );
 
   const handleTryOn = () => {
     if (!productUrl) return;
@@ -47,29 +150,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     }, 2500);
   };
 
-  const handleFaceUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setFaceImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Calculate mannequin transform based on proportions
-  const bodyStyle = {
-    transform: `scaleY(${proportions.height / 100})`,
-    transformOrigin: "bottom center",
-  };
-
-  // Upper body (chest) scaling
-  const upperBodyStyle = {
-    transform: `scaleX(${proportions.chest / 100})`,
-    transformOrigin: "center",
-  };
-
-  // Clip paths to simulate body section scaling
-  const mannequinScale = proportions.height / 100;
+  const aiWorking = isBlending || isReshaping;
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -102,49 +183,35 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       <div className="flex-1 flex overflow-hidden">
         {/* Body viewer */}
         <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30">
-          <div
-            className="relative z-10"
-            style={{ transform: `scale(${mannequinScale})`, transformOrigin: "bottom center" }}
-          >
-            {/* Mannequin body */}
-            <div
-              style={{
-                transform: `scaleX(${proportions.chest / 100})`,
-                transformOrigin: "center top",
-              }}
-            >
-              <img
-                src={dollImage}
-                alt="Your virtual doll"
-                className="max-h-[380px] object-contain"
-              />
-            </div>
+          <div className="relative z-10">
+            <img
+              src={displayImage}
+              alt="Your virtual doll"
+              className="max-h-[380px] object-contain"
+            />
 
-            {/* Face overlay */}
+            {/* Face upload button (top of mannequin head) */}
             <div className="absolute top-[2%] left-1/2 -translate-x-1/2 w-[22%] aspect-square">
-              {faceImage ? (
+              {!currentMannequin && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-full rounded-full overflow-hidden border-2 border-primary/30 hover:border-primary transition-colors group"
-                >
-                  <img
-                    src={faceImage}
-                    alt="Your face"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-background/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                    <Camera className="w-4 h-4 text-foreground" />
-                  </div>
-                </button>
-              ) : (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-full rounded-full border-2 border-dashed border-muted-foreground/40 hover:border-primary/60 transition-colors flex items-center justify-center bg-secondary/50"
+                  className="w-full h-full rounded-full border-2 border-dashed border-muted-foreground/40 hover:border-foreground/60 transition-colors flex items-center justify-center bg-secondary/50"
                 >
                   <Camera className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
             </div>
+
+            {/* Re-upload face button when face is blended */}
+            {currentMannequin && (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute top-2 right-2 p-1.5 rounded-md bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
+                title="Change face"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+            )}
 
             <input
               ref={fileInputRef}
@@ -155,12 +222,17 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             />
           </div>
 
-          {isProcessing && (
+          {/* AI processing overlay */}
+          {(aiWorking || isProcessing) && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20">
               <div className="flex flex-col items-center gap-3">
                 <Loader2 className="w-8 h-8 text-foreground animate-spin" />
                 <span className="text-sm text-muted-foreground">
-                  Fitting garment...
+                  {isBlending
+                    ? "Blending your face..."
+                    : isReshaping
+                    ? "Reshaping body..."
+                    : "Fitting garment..."}
                 </span>
               </div>
             </div>
@@ -181,10 +253,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             <p className="text-[11px] font-sans font-semibold text-foreground mb-3 uppercase tracking-wider">
               Body
             </p>
-            <BodyCustomizer
-              proportions={proportions}
-              onChange={setProportions}
-            />
+            <BodyCustomizer proportions={proportions} onChange={handleReshape} />
           </div>
         )}
       </div>
@@ -200,9 +269,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               <p className="text-xs font-medium font-sans truncate">Product loaded</p>
               <p className="text-xs text-muted-foreground truncate">{productUrl}</p>
             </div>
-            <span className="text-xs font-sans font-medium text-foreground">
-              Fitted ✓
-            </span>
+            <span className="text-xs font-sans font-medium text-foreground">Fitted ✓</span>
           </div>
         </div>
       )}
