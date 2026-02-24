@@ -352,9 +352,9 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-card">
+    <div className="flex flex-col h-full bg-secondary/30">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
           FitVision
         </h1>
@@ -381,7 +381,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Body viewer */}
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30 p-2">
+        <div className="flex-1 relative flex items-center justify-center overflow-hidden p-2">
           <div className="relative z-10 h-full flex items-center justify-center">
             <img
               src={displayImage}
@@ -431,8 +431,8 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
           {/* Rotation controls */}
           {!isProcessing && steps.length === 0 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+              <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1">
                 <RotateCcw className="w-3 h-3" />
                 Rotate
               </button>
@@ -442,7 +442,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
         {/* Sliders panel */}
         {showSliders && (
-          <div className="w-[160px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up">
+          <div className="w-[160px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up bg-card">
             <p className="text-[11px] font-sans font-semibold text-foreground mb-3 uppercase tracking-wider">
               Body
             </p>
@@ -457,7 +457,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       )}
 
       {/* Product URL input */}
-      <div className="p-4 border-t border-border/50">
+      <div className="p-4">
         {/* Product image preview */}
         {productImage && !isProcessing && (
           <div className="mb-3 flex items-center gap-2 bg-secondary/50 rounded-lg p-2">
@@ -485,7 +485,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               value={productUrl}
               onChange={(e) => { setProductUrl(e.target.value); setProductImage(null); }}
               placeholder="Upload image or paste image URL..."
-              className="pl-9 bg-secondary border-border/50 text-sm"
+              className="pl-9 bg-card/60 backdrop-blur-sm border-border/50 text-sm"
               disabled={isProcessing}
             />
           </div>
