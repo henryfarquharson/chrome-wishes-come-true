@@ -90,6 +90,29 @@ async function callWithRetry(
   }
 }
 
+/** Auto-dismissing product loaded notification */
+const ProductLoadedBar = ({ productUrl, onDismiss }: { productUrl: string; onDismiss: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onDismiss, 3000);
+    return () => clearTimeout(timer);
+  }, [onDismiss]);
+
+  return (
+    <div className="mx-4 mb-2 bg-secondary rounded-xl p-3 animate-slide-up">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+          <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium font-sans truncate">Product loaded</p>
+          <p className="text-xs text-muted-foreground truncate">{productUrl}</p>
+        </div>
+        <span className="text-xs font-sans font-medium text-foreground">Fitted ✓</span>
+      </div>
+    </div>
+  );
+};
+
 const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
@@ -356,14 +379,14 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Body viewer */}
-        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30">
-          <div className="relative z-10">
+        <div className="flex-1 relative flex items-center justify-center overflow-hidden bg-secondary/30 p-2">
+          <div className="relative z-10 h-full flex items-center justify-center">
             <img
               src={displayImage}
               alt="Your virtual doll"
-              className="max-h-full object-contain"
+              className="max-h-full max-w-full object-contain"
             />
 
             {/* Face upload button */}
@@ -428,20 +451,9 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
         )}
       </div>
 
-      {/* Product info bar */}
+      {/* Product info bar - auto-dismiss after 3s */}
       {hasProduct && !isProcessing && (
-        <div className="mx-4 mb-2 bg-secondary rounded-xl p-3 animate-slide-up">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium font-sans truncate">Product loaded</p>
-              <p className="text-xs text-muted-foreground truncate">{productUrl}</p>
-            </div>
-            <span className="text-xs font-sans font-medium text-foreground">Fitted ✓</span>
-          </div>
-        </div>
+        <ProductLoadedBar productUrl={productUrl} onDismiss={() => setHasProduct(false)} />
       )}
 
       {/* Product URL input */}
