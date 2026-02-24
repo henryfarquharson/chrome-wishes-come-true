@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, ChevronRight, Ruler, User } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, Ruler, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,7 +105,14 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
 
       {step === 1 && (
         <div className="flex-1 flex flex-col px-6 gap-5 pt-4">
-          <div className="text-center space-y-2">
+          <div className="relative text-center space-y-2">
+            <button
+              onClick={() => setStep(0)}
+              className="absolute left-0 top-1 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <h2 className="text-2xl font-display font-bold">
               <User className="inline w-5 h-5 mr-2 mb-1" />
               Basic Info
@@ -174,7 +181,14 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
 
       {step === 2 && (
         <div className="flex-1 flex flex-col px-6 gap-5 pt-4">
-          <div className="text-center space-y-2">
+          <div className="relative text-center space-y-2">
+            <button
+              onClick={() => setStep(1)}
+              className="absolute left-0 top-1 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <h2 className="text-2xl font-display font-bold">
               <Ruler className="inline w-5 h-5 mr-2 mb-1" />
               Measurements
