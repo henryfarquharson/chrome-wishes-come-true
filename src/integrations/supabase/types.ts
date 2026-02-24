@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          base_mannequin: string | null
+          chest_cm: number | null
+          created_at: string
+          face_image: string | null
+          gender: string
+          height_cm: number | null
+          hips_cm: number | null
+          id: string
+          updated_at: string
+          waist_cm: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          base_mannequin?: string | null
+          chest_cm?: number | null
+          created_at?: string
+          face_image?: string | null
+          gender?: string
+          height_cm?: number | null
+          hips_cm?: number | null
+          id: string
+          updated_at?: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          base_mannequin?: string | null
+          chest_cm?: number | null
+          created_at?: string
+          face_image?: string | null
+          gender?: string
+          height_cm?: number | null
+          hips_cm?: number | null
+          id?: string
+          updated_at?: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
