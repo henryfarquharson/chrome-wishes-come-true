@@ -27,6 +27,7 @@ interface TryOnViewerProps {
 const defaultProportions: BodyProportions = {
   height: 100,
   chest: 100,
+  waist: 100,
   hips: 100,
   legs: 100,
 };
@@ -143,7 +144,45 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setLastFailedAction(null);
   };
 
-  // No auto-blend: user must press "Try On" to start processing
+  // Auto-reshape mannequin based on profile measurements on mount
+  useEffect(() => {
+    if (hasAutoBlended.current) return;
+    hasAutoBlended.current = true;
+
+    const avgChest = profile.gender === "female" ? 90 : 96;
+    const avgWaist = profile.gender === "female" ? 70 : 80;
+    const avgHips = profile.gender === "female" ? 100 : 98;
+    const avgHeight = profile.gender === "female" ? 163 : 175;
+
+    const newProportions: BodyProportions = { ...defaultProportions };
+    let hasCustom = false;
+
+    if (profile.chest) {
+      newProportions.chest = Math.round((parseFloat(profile.chest) / avgChest) * 100);
+      newProportions.chest = Math.max(70, Math.min(130, newProportions.chest));
+      hasCustom = true;
+    }
+    if (profile.waist) {
+      newProportions.waist = Math.round((parseFloat(profile.waist) / avgWaist) * 100);
+      newProportions.waist = Math.max(70, Math.min(130, newProportions.waist));
+      hasCustom = true;
+    }
+    if (profile.hips) {
+      newProportions.hips = Math.round((parseFloat(profile.hips) / avgHips) * 100);
+      newProportions.hips = Math.max(70, Math.min(130, newProportions.hips));
+      hasCustom = true;
+    }
+    if (profile.height) {
+      newProportions.height = Math.round((parseFloat(profile.height) / avgHeight) * 100);
+      newProportions.height = Math.max(50, Math.min(150, newProportions.height));
+      hasCustom = true;
+    }
+
+    if (hasCustom) {
+      setProportions(newProportions);
+      handleReshape(newProportions);
+    }
+  }, []);
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
