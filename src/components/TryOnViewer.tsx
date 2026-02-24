@@ -6,6 +6,8 @@ import {
   User,
   Camera,
   SlidersHorizontal,
+  Upload,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,7 +100,9 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [steps, setSteps] = useState<ProcessingStep[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedAction, setLastFailedAction] = useState<(() => void) | null>(null);
+  const [productImage, setProductImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const productInputRef = useRef<HTMLInputElement>(null);
   const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
   const hasAutoBlended = useRef(false);
 
@@ -243,14 +247,36 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     [baseDoll, faceImage, profile.gender]
   );
 
-  const handleTryOn = async () => {
-    if (!productUrl) return;
-    runTryOn(productUrl);
+  const handleProductUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      setProductImage(dataUrl);
+      setProductUrl(file.name);
+      runTryOn(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const runTryOn = async (url: string) => {
+  const handleTryOn = async () => {
+    if (productImage) {
+      runTryOn(productImage);
+    } else if (productUrl) {
+      // Check if URL looks like a direct image URL
+      const isDirectImage = /\.(jpg|jpeg|png|webp|gif|bmp|svg)(\?.*)?$/i.test(productUrl);
+      if (!isDirectImage) {
+        toast.error("Please upload a product image or paste a direct image URL (ending in .jpg, .png, etc.)");
+        return;
+      }
+      runTryOn(productUrl);
+    }
+  };
+
+  const runTryOn = async (imageSource: string) => {
     const tryOnSteps: ProcessingStep[] = [
-      { id: "fetch", label: "Fetching product image...", status: "active" },
+      { id: "fetch", label: "Preparing product image...", status: "active" },
       { id: "analyze", label: "Analyzing clothing...", status: "pending" },
       { id: "fit", label: "Fitting to your body...", status: "pending" },
       { id: "render", label: "Rendering final look...", status: "pending" },
@@ -259,6 +285,14 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setErrorMessage(null);
 
     try {
+      // If it's a URL, fetch and convert to base64 client-side
+      let productBase64 = imageSource;
+      if (imageSource.startsWith("http")) {
+        productBase64 = await compressImage(imageSource, 800);
+      } else if (imageSource.startsWith("data:")) {
+        productBase64 = await compressImage(imageSource, 800);
+      }
+
       const mannequinBase64 = await compressImage(
         await assetToBase64(currentMannequin || baseDoll),
         800
@@ -273,7 +307,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       const result = await callWithRetry({
         action: "try-on",
         mannequinImage: mannequinBase64,
-        productImageUrl: url,
+        productImageUrl: productBase64,
         gender: profile.gender,
       });
 
@@ -290,7 +324,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       setSteps((prev) =>
         prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
       );
-      setLastFailedAction(() => () => runTryOn(url));
+      setLastFailedAction(() => () => runTryOn(imageSource));
     }
   };
 
@@ -412,28 +446,55 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
       {/* Product URL input */}
       <div className="p-4 border-t border-border/50">
+        {/* Product image preview */}
+        {productImage && !isProcessing && (
+          <div className="mb-3 flex items-center gap-2 bg-secondary/50 rounded-lg p-2">
+            <img src={productImage} alt="Product" className="w-10 h-10 rounded object-cover" />
+            <span className="text-xs text-muted-foreground flex-1 truncate">{productUrl}</span>
+            <button
+              onClick={() => { setProductImage(null); setProductUrl(""); }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >✕</button>
+          </div>
+        )}
         <div className="flex gap-2">
+          <Button
+            onClick={() => productInputRef.current?.click()}
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-border/50"
+            disabled={isProcessing}
+          >
+            <Upload className="w-4 h-4" />
+          </Button>
           <div className="relative flex-1">
-            <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               value={productUrl}
-              onChange={(e) => setProductUrl(e.target.value)}
-              placeholder="Paste clothing product URL..."
+              onChange={(e) => { setProductUrl(e.target.value); setProductImage(null); }}
+              placeholder="Upload image or paste image URL..."
               className="pl-9 bg-secondary border-border/50 text-sm"
               disabled={isProcessing}
             />
           </div>
           <Button
             onClick={handleTryOn}
-            disabled={!productUrl || isProcessing}
+            disabled={(!productUrl && !productImage) || isProcessing}
             className="bg-foreground text-background hover:bg-foreground/90 border-0 shrink-0 font-sans"
             size="sm"
           >
             Try On
           </Button>
         </div>
+        <input
+          ref={productInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleProductUpload}
+          className="hidden"
+        />
         <p className="text-[10px] text-muted-foreground mt-2 text-center font-sans">
-          Works with Zara, H&M, Nike, ASOS & more
+          Upload a product image or paste a direct image URL (.jpg, .png, .webp)
         </p>
       </div>
     </div>
