@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import dollMale from "@/assets/doll-male.png";
 import dollFemale from "@/assets/doll-female.png";
-import BodyCustomizer, { type BodyProportions } from "./BodyCustomizer";
+import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
 import ProcessingOverlay, { type ProcessingStep } from "./ProcessingOverlay";
 import type { ProfileData } from "./ProfileSetup";
 
@@ -24,13 +24,10 @@ interface TryOnViewerProps {
   onReset: () => void;
 }
 
-const defaultProportions: BodyProportions = {
-  height: 100,
-  chest: 100,
-  waist: 100,
-  hips: 100,
-  legs: 100,
-};
+// Will be set based on gender in the component
+function getDefaults(gender: string): BodyProportions {
+  return gender === "female" ? { ...defaultFemaleCm } : { ...defaultMaleCm };
+}
 
 /** Compress an image to max dimensions and return base64 */
 function compressImage(src: string, maxSize = 800): Promise<string> {
@@ -118,7 +115,16 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [productUrl, setProductUrl] = useState("");
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
-  const [proportions, setProportions] = useState<BodyProportions>(defaultProportions);
+  const [proportions, setProportions] = useState<BodyProportions>(() => {
+    const defaults = getDefaults(profile.gender);
+    return {
+      height: profile.height ? parseFloat(profile.height) || defaults.height : defaults.height,
+      chest: profile.chest ? parseFloat(profile.chest) || defaults.chest : defaults.chest,
+      waist: profile.waist ? parseFloat(profile.waist) || defaults.waist : defaults.waist,
+      hips: profile.hips ? parseFloat(profile.hips) || defaults.hips : defaults.hips,
+      legs: defaults.legs,
+    };
+  });
   const [showSliders, setShowSliders] = useState(false);
   const [currentMannequin, setCurrentMannequin] = useState<string | null>(null);
   const [steps, setSteps] = useState<ProcessingStep[]>([]);
@@ -144,45 +150,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setLastFailedAction(null);
   };
 
-  // Auto-reshape mannequin based on profile measurements on mount
-  useEffect(() => {
-    if (hasAutoBlended.current) return;
-    hasAutoBlended.current = true;
-
-    const avgChest = profile.gender === "female" ? 90 : 96;
-    const avgWaist = profile.gender === "female" ? 70 : 80;
-    const avgHips = profile.gender === "female" ? 100 : 98;
-    const avgHeight = profile.gender === "female" ? 163 : 175;
-
-    const newProportions: BodyProportions = { ...defaultProportions };
-    let hasCustom = false;
-
-    if (profile.chest) {
-      newProportions.chest = Math.round((parseFloat(profile.chest) / avgChest) * 100);
-      newProportions.chest = Math.max(70, Math.min(130, newProportions.chest));
-      hasCustom = true;
-    }
-    if (profile.waist) {
-      newProportions.waist = Math.round((parseFloat(profile.waist) / avgWaist) * 100);
-      newProportions.waist = Math.max(70, Math.min(130, newProportions.waist));
-      hasCustom = true;
-    }
-    if (profile.hips) {
-      newProportions.hips = Math.round((parseFloat(profile.hips) / avgHips) * 100);
-      newProportions.hips = Math.max(70, Math.min(130, newProportions.hips));
-      hasCustom = true;
-    }
-    if (profile.height) {
-      newProportions.height = Math.round((parseFloat(profile.height) / avgHeight) * 100);
-      newProportions.height = Math.max(50, Math.min(150, newProportions.height));
-      hasCustom = true;
-    }
-
-    if (hasCustom) {
-      setProportions(newProportions);
-      handleReshape(newProportions);
-    }
-  }, []);
+  // No auto-reshape on mount; user adjusts sliders and sees instant CSS feedback
 
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -244,7 +212,10 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       if (reshapeTimeout.current) clearTimeout(reshapeTimeout.current);
 
       reshapeTimeout.current = setTimeout(async () => {
-        const isDefault = Object.values(newProportions).every((v) => v === 100);
+        const defaults = getDefaults(profile.gender);
+        const isDefault = Object.keys(newProportions).every(
+          (k) => newProportions[k as keyof BodyProportions] === defaults[k as keyof BodyProportions]
+        );
         if (isDefault) {
           setCurrentMannequin(null);
           return;
@@ -429,7 +400,12 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
               alt="Your virtual doll"
               className="max-w-full max-h-full object-contain transition-transform duration-200 ease-out"
               style={{
-                transform: `scaleX(${((proportions.chest + proportions.waist + proportions.hips) / 3 / 100).toFixed(2)}) scaleY(${(proportions.height / 100).toFixed(2)})`,
+                transform: (() => {
+                  const defaults = getDefaults(profile.gender);
+                  const sx = ((proportions.chest + proportions.waist + proportions.hips) / 3) / ((defaults.chest + defaults.waist + defaults.hips) / 3);
+                  const sy = proportions.height / defaults.height;
+                  return `scaleX(${sx.toFixed(3)}) scaleY(${sy.toFixed(3)})`;
+                })(),
               }}
             />
 

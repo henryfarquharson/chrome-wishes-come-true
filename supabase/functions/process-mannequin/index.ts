@@ -99,12 +99,23 @@ CRITICAL RULES:
     } else if (action === "reshape-body") {
       const { mannequinImage, gender, proportions } = body;
       const { height, chest, waist, hips, legs } = proportions;
-      const prompt = `Edit this mannequin/doll image to adjust body proportions: 
-- Overall height scale: ${height}% (${height > 100 ? "taller" : height < 100 ? "shorter" : "normal"})
-- Chest/torso width: ${chest}% (${chest > 100 ? "wider chest" : chest < 100 ? "narrower chest" : "normal"})
-- Waist width: ${waist}% (${waist > 100 ? "wider waist" : waist < 100 ? "narrower waist" : "normal"})
-- Hip width: ${hips}% (${hips > 100 ? "wider hips" : hips < 100 ? "narrower hips" : "normal"})
-- Leg length: ${legs}% (${legs > 100 ? "longer legs" : legs < 100 ? "shorter legs" : "normal"})
+      // Baseline averages for percentage calculation
+      const avgH = gender === "female" ? 163 : 175;
+      const avgC = gender === "female" ? 90 : 96;
+      const avgW = gender === "female" ? 70 : 80;
+      const avgHp = gender === "female" ? 100 : 98;
+      const avgL = gender === "female" ? 76 : 82;
+      const hPct = Math.round((height / avgH) * 100);
+      const cPct = Math.round((chest / avgC) * 100);
+      const wPct = Math.round((waist / avgW) * 100);
+      const hpPct = Math.round((hips / avgHp) * 100);
+      const lPct = Math.round((legs / avgL) * 100);
+      const prompt = `Edit this mannequin/doll image to adjust body proportions to match these measurements:
+- Height: ${height}cm (${hPct}% of average — ${hPct > 100 ? "taller" : hPct < 100 ? "shorter" : "average"})
+- Chest: ${chest}cm (${cPct}% — ${cPct > 100 ? "wider chest" : cPct < 100 ? "narrower chest" : "average"})
+- Waist: ${waist}cm (${wPct}% — ${wPct > 100 ? "wider waist" : wPct < 100 ? "narrower waist" : "average"})
+- Hips: ${hips}cm (${hpPct}% — ${hpPct > 100 ? "wider hips" : hpPct < 100 ? "narrower hips" : "average"})
+- Inseam/Legs: ${legs}cm (${lPct}% — ${lPct > 100 ? "longer legs" : lPct < 100 ? "shorter legs" : "average"})
 Keep the same style, pose, clothing, and skin color. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.
 BACKGROUND: Use a solid #d5d3d0 (light warm gray) background. No gradients, no other colors.
 FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input image. Do NOT crop or zoom in.
