@@ -47,7 +47,7 @@ function compressImage(src: string, maxSize = 800): Promise<string> {
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = () => reject("Failed to load image");
     img.src = src;
