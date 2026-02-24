@@ -386,7 +386,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             <img
               src={displayImage}
               alt="Your virtual doll"
-              className="h-full w-full object-cover object-top"
+              className="h-full w-full object-contain"
             />
 
             {/* Face upload button */}
