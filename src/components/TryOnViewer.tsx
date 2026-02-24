@@ -352,7 +352,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full" style={{ background: 'linear-gradient(to bottom, #d4d0cc 0%, #b8b4af 50%, #d0ccc8 100%)' }}>
+    <div className="flex flex-col h-full" style={{ background: '#d5d3d0' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-card">
         <h1 className="font-sans font-semibold text-sm tracking-tight text-foreground">
@@ -381,12 +381,12 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Body viewer */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: 'linear-gradient(to bottom, #d4d0cc 0%, #b8b4af 50%, #d0ccc8 100%)' }}>
-          <div className="relative z-10 h-full w-full">
+        <div className="flex-1 relative overflow-hidden" style={{ background: '#d5d3d0' }}>
+          <div className="relative z-10 h-full w-full overflow-hidden">
             <img
               src={displayImage}
               alt="Your virtual doll"
-              className="h-full w-full object-contain"
+              className="w-full h-full object-cover object-center"
             />
 
             {/* Face upload button */}
