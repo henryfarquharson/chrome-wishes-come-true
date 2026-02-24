@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Link2,
   RotateCcw,
@@ -29,6 +29,32 @@ const defaultProportions: BodyProportions = {
   legs: 100,
 };
 
+/** Compress an image to max dimensions and return base64 */
+function compressImage(src: string, maxSize = 800): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!src) return reject("No image source");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => reject("Failed to load image");
+    img.src = src;
+  });
+}
+
+/** Convert a local asset path to a base64 data URL */
 async function assetToBase64(src: string): Promise<string> {
   if (src.startsWith("data:")) return src;
   const res = await fetch(src);
@@ -74,6 +100,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
   const [lastFailedAction, setLastFailedAction] = useState<(() => void) | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reshapeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const hasAutoBlended = useRef(false);
 
   const baseDoll = profile.gender === "female" ? dollFemale : dollMale;
   const displayImage = currentMannequin || baseDoll;
@@ -89,10 +116,17 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setLastFailedAction(null);
   };
 
+  // Auto-trigger face blend if user uploaded a photo during profile setup
+  useEffect(() => {
+    if (profile.photo && !hasAutoBlended.current) {
+      hasAutoBlended.current = true;
+      runFaceBlend(profile.photo);
+    }
+  }, [profile.photo]);
+
   const handleFaceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onloadend = () => {
       const faceDataUrl = reader.result as string;
@@ -112,14 +146,19 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setErrorMessage(null);
 
     try {
-      const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
+      // Compress both images to reduce payload size
+      const [compressedFace, compressedMannequin] = await Promise.all([
+        compressImage(face, 512),
+        compressImage(await assetToBase64(currentMannequin || baseDoll), 800),
+      ]);
+
       updateStep("prepare", "done");
       updateStep("blend", "active");
 
       const result = await callWithRetry({
         action: "blend-face",
-        faceImage: face,
-        mannequinImage: mannequinBase64,
+        faceImage: compressedFace,
+        mannequinImage: compressedMannequin,
         gender: profile.gender,
       });
 
@@ -131,9 +170,10 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       setTimeout(clearProcessing, 1000);
     } catch (err: any) {
       console.error("Face blend error:", err);
-      const failedStep = steps.find((s) => s.status === "active")?.id || "blend";
-      updateStep(failedStep, "error");
-      setErrorMessage(err.message || "Failed to blend face");
+      setSteps((prev) =>
+        prev.map((s) => (s.status === "active" ? { ...s, status: "error" } : s))
+      );
+      setErrorMessage(err.message || "Failed to blend face. Please try again.");
       setLastFailedAction(() => () => runFaceBlend(face));
     }
   };
@@ -160,7 +200,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
         setErrorMessage(null);
 
         try {
-          const mannequinBase64 = await assetToBase64(baseDoll);
+          const mannequinBase64 = await compressImage(await assetToBase64(baseDoll), 800);
           updateStep("prepare", "done");
           updateStep("reshape", "active");
 
@@ -175,9 +215,10 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
 
           if (faceImage) {
             updateStep("reblend", "active");
+            const compressedFace = await compressImage(faceImage, 512);
             const blended = await callWithRetry({
               action: "blend-face",
-              faceImage,
+              faceImage: compressedFace,
               mannequinImage: result,
               gender: profile.gender,
             });
@@ -218,11 +259,13 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
     setErrorMessage(null);
 
     try {
-      const mannequinBase64 = await assetToBase64(currentMannequin || baseDoll);
+      const mannequinBase64 = await compressImage(
+        await assetToBase64(currentMannequin || baseDoll),
+        800
+      );
       updateStep("fetch", "done");
       updateStep("analyze", "active");
 
-      // Small delay to show step progression
       await new Promise((r) => setTimeout(r, 300));
       updateStep("analyze", "done");
       updateStep("fit", "active");
@@ -325,13 +368,7 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
             <ProcessingOverlay
               steps={steps}
               errorMessage={errorMessage}
-              onRetry={
-                lastFailedAction
-                  ? () => {
-                      lastFailedAction();
-                    }
-                  : undefined
-              }
+              onRetry={lastFailedAction ? () => lastFailedAction() : undefined}
             />
           )}
 
