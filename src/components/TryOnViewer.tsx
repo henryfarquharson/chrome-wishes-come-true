@@ -381,7 +381,15 @@ const TryOnViewer = ({ profile, onReset }: TryOnViewerProps) => {
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Body viewer */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: '#d5d3d0' }}>
+        <div className="flex-1 relative overflow-hidden bg-muted">
+          <div className="absolute inset-0">
+            <img
+              src={displayImage}
+              alt=""
+              aria-hidden="true"
+              className="w-full h-full object-cover scale-105 blur-sm opacity-40"
+            />
+          </div>
           <div className="relative z-10 h-full w-full overflow-hidden">
             <img
               src={displayImage}
