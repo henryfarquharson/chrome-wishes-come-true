@@ -488,7 +488,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="user"
+              
               onChange={handleFaceUpload}
               className="hidden"
             />

@@ -78,7 +78,7 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
             <input
               type="file"
               accept="image/*"
-              capture="user"
+              
               onChange={handlePhotoUpload}
               className="hidden"
             />
