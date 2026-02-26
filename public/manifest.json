@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Quin Fit",
+  "description": "Virtual try-on — see how clothes look on your body",
+  "version": "1.0.0",
+  "permissions": ["sidePanel"],
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Open Quin Fit"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "favicon.ico",
+    "48": "favicon.ico",
+    "128": "favicon.ico"
+  }
+}
