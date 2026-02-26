@@ -34,7 +34,7 @@ const Index = () => {
         if (error) throw error;
 
         // If profile has gender set (not default) and has measurements, skip onboarding
-        if (data && data.gender && (data.chest_cm || data.waist_cm || data.hips_cm || data.height_cm)) {
+        if (data && data.gender && data.gender !== "") {
           setProfile({
             photo: data.face_image || null,
             height: data.height_cm?.toString() || "",

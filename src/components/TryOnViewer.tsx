@@ -166,15 +166,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const [hasProduct, setHasProduct] = useState(false);
   const [faceImage, setFaceImage] = useState<string | null>(profile.photo);
   const [savedProportions] = useState<BodyProportions>(() => {
-    if (profile.proportions) return { ...profile.proportions };
-    const defaults = getDefaults(profile.gender);
-    return {
-      height: profile.height ? parseFloat(profile.height) || defaults.height : defaults.height,
-      chest: profile.chest ? parseFloat(profile.chest) || defaults.chest : defaults.chest,
-      waist: profile.waist ? parseFloat(profile.waist) || defaults.waist : defaults.waist,
-      hips: profile.hips ? parseFloat(profile.hips) || defaults.hips : defaults.hips,
-      legs: defaults.legs,
-    };
+    return getDefaults(profile.gender);
   });
   const [currentMannequin, setCurrentMannequin] = useState<string | null>(profile.baseMannequin || null);
   const [baseMannequinState, setBaseMannequinState] = useState<string | null>(profile.baseMannequin || null);
