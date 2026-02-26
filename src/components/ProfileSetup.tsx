@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { ArrowLeft, Camera, ChevronRight, Ruler, User, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import BodyCustomizer, { type BodyProportions, defaultMaleCm, defaultFemaleCm } from "./BodyCustomizer";
+import { Label } from "@/components/ui/label";
 
 interface ProfileSetupProps {
   onComplete: (profile: ProfileData) => void;
@@ -25,31 +23,12 @@ export interface ProfileData {
   waist: string;
   hips: string;
   baseMannequin?: string | null;
-  proportions?: BodyProportions;
 }
 
 const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
   const [step, setStep] = useState(0);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [height, setHeight] = useState("");
-  const [weight, setWeight] = useState("");
   const [gender, setGender] = useState("");
-  const [chest, setChest] = useState("");
-  const [waist, setWaist] = useState("");
-  const [hips, setHips] = useState("");
-  const [proportions, setProportions] = useState<BodyProportions | null>(null);
-
-  // Initialize proportions when gender changes
-  const getCurrentProportions = (): BodyProportions => {
-    const defaults = gender === "female" ? { ...defaultFemaleCm } : { ...defaultMaleCm };
-    return proportions || {
-      height: height ? parseFloat(height) || defaults.height : defaults.height,
-      chest: chest ? parseFloat(chest) || defaults.chest : defaults.chest,
-      waist: waist ? parseFloat(waist) || defaults.waist : defaults.waist,
-      hips: hips ? parseFloat(hips) || defaults.hips : defaults.hips,
-      legs: defaults.legs,
-    };
-  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,14 +40,14 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
   };
 
   const handleComplete = () => {
-    onComplete({ photo, height, weight, gender, chest, waist, hips, proportions: getCurrentProportions() });
+    onComplete({ photo, height: "", weight: "", gender, chest: "", waist: "", hips: "" });
   };
 
   return (
     <div className="flex flex-col h-full animate-slide-up">
       {/* Progress bar */}
       <div className="flex gap-1.5 px-6 pt-6 pb-4">
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1].map((i) => (
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-all duration-500 ${
@@ -89,11 +68,7 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
 
           <label className="relative w-40 h-40 rounded-2xl glass flex items-center justify-center cursor-pointer group hover:border-primary/50 transition-all overflow-hidden">
             {photo ? (
-              <img
-                src={photo}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
+              <img src={photo} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <div className="flex flex-col items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
                 <Camera className="w-8 h-8" />
@@ -131,149 +106,33 @@ const ProfileSetup = ({ onComplete }: ProfileSetupProps) => {
             </button>
             <h2 className="text-2xl font-display font-bold">
               <User className="inline w-5 h-5 mr-2 mb-1" />
-              Basic Info
+              Select Gender
             </h2>
             <p className="text-muted-foreground text-sm">
-              Help us create your virtual body
+              Choose your mannequin type
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                Gender
-              </Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger className="glass border-border/50">
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="nonbinary">Non-binary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                  Height (cm)
-                </Label>
-                <Input
-                  type="number"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  placeholder="175"
-                  className="glass border-border/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                  Weight (kg)
-                </Label>
-                <Input
-                  type="number"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  placeholder="70"
-                  className="glass border-border/50"
-                />
-              </div>
-            </div>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs uppercase tracking-wider">
+              Gender
+            </Label>
+            <Select value={gender} onValueChange={setGender}>
+              <SelectTrigger className="glass border-border/50">
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Male</SelectItem>
+                <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="nonbinary">Non-binary</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-
-          <div className="mt-auto pb-6">
-            <Button
-              onClick={() => setStep(2)}
-              className="w-full gradient-primary text-primary-foreground border-0 glow-primary"
-            >
-              Continue
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="flex-1 flex flex-col px-6 gap-5 pt-4">
-          <div className="relative text-center space-y-2">
-            <button
-              onClick={() => setStep(1)}
-              className="absolute left-0 top-1 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-2xl font-display font-bold">
-              <Ruler className="inline w-5 h-5 mr-2 mb-1" />
-              Measurements
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Optional but improves accuracy
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {[
-              { label: "Chest", value: chest, setter: setChest, placeholder: "96" },
-              { label: "Waist", value: waist, setter: setWaist, placeholder: "80" },
-              { label: "Hips", value: hips, setter: setHips, placeholder: "98" },
-            ].map(({ label, value, setter, placeholder }) => (
-              <div key={label} className="space-y-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wider">
-                  {label} (cm)
-                </Label>
-                <Input
-                  type="number"
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  placeholder={placeholder}
-                  className="glass border-border/50"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-auto pb-6">
-            <Button
-              onClick={() => setStep(3)}
-              className="w-full gradient-primary text-primary-foreground border-0 glow-primary"
-            >
-              Continue
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="flex-1 flex flex-col px-6 gap-5 pt-4 overflow-y-auto">
-          <div className="relative text-center space-y-2">
-            <button
-              onClick={() => setStep(2)}
-              className="absolute left-0 top-1 p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-2xl font-display font-bold">
-              <SlidersHorizontal className="inline w-5 h-5 mr-2 mb-1" />
-              Body Shape
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Fine-tune your body proportions
-            </p>
-          </div>
-
-          <BodyCustomizer
-            proportions={getCurrentProportions()}
-            onChange={(p) => setProportions(p)}
-          />
 
           <div className="mt-auto pb-6">
             <Button
               onClick={handleComplete}
+              disabled={!gender}
               className="w-full gradient-primary text-primary-foreground border-0 glow-primary"
             >
               Start Trying On
