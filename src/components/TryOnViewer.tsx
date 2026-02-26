@@ -45,8 +45,8 @@ function getDefaults(gender: string): BodyProportions {
   return gender === "female" ? { ...defaultFemaleCm } : { ...defaultMaleCm };
 }
 
-/** Compress an image to max dimensions and return base64 */
-function compressImage(src: string, maxSize = 800): Promise<string> {
+/** Compress an image to max dimensions and return base64 + dimensions */
+function compressImage(src: string, maxSize = 800): Promise<{ data: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     if (!src) return reject("No image source");
     const img = new Image();
@@ -63,7 +63,7 @@ function compressImage(src: string, maxSize = 800): Promise<string> {
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/png"));
+      resolve({ data: canvas.toDataURL("image/png"), width, height });
     };
     img.onerror = () => reject("Failed to load image");
     img.src = src;
@@ -242,9 +242,11 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
       const result = await callWithRetry({
         action: "blend-face",
-        faceImage: compressedFace,
-        mannequinImage: compressedMannequin,
+        faceImage: compressedFace.data,
+        mannequinImage: compressedMannequin.data,
         gender: profile.gender,
+        imageWidth: compressedMannequin.width,
+        imageHeight: compressedMannequin.height,
       });
 
       updateStep("blend", "done");
@@ -307,14 +309,15 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
     try {
       // If it's a URL, fetch and convert to base64 client-side
-      let productBase64 = imageSource;
-      if (imageSource.startsWith("http")) {
-        productBase64 = await compressImage(imageSource, 800);
-      } else if (imageSource.startsWith("data:")) {
-        productBase64 = await compressImage(imageSource, 800);
+      let productData: string;
+      if (imageSource.startsWith("http") || imageSource.startsWith("data:")) {
+        const compressed = await compressImage(imageSource, 800);
+        productData = compressed.data;
+      } else {
+        productData = imageSource;
       }
 
-      const mannequinBase64 = await compressImage(
+      const compressedMannequin = await compressImage(
         await assetToBase64(currentMannequin || baseDoll),
         800
       );
@@ -327,9 +330,11 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
 
       const result = await callWithRetry({
         action: "try-on",
-        mannequinImage: mannequinBase64,
-        productImageUrl: productBase64,
+        mannequinImage: compressedMannequin.data,
+        productImageUrl: productData,
         gender: profile.gender,
+        imageWidth: compressedMannequin.width,
+        imageHeight: compressedMannequin.height,
       });
 
       updateStep("fit", "done");

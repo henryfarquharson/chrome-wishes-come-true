@@ -62,8 +62,8 @@ serve(async (req) => {
     let imageUrl: string;
 
     if (action === "blend-face") {
-      const { faceImage, mannequinImage, gender } = body;
-      console.log("Face image length:", faceImage?.length || 0, "Mannequin length:", mannequinImage?.length || 0);
+      const { faceImage, mannequinImage, gender, imageWidth, imageHeight } = body;
+      console.log("Face image length:", faceImage?.length || 0, "Mannequin length:", mannequinImage?.length || 0, "Dimensions:", imageWidth, "x", imageHeight);
       
       const prompt = `You are an expert 3D mannequin renderer. I'm giving you two images:
 1. First image: A smooth, off-white/cream colored store mannequin doll figure with a featureless head
@@ -74,20 +74,21 @@ Your task: Create a MANNEQUIN-STYLE version of this person's face and place it o
 CRITICAL RULES:
 - Do NOT paste the real photo onto the mannequin. Instead, RENDER the face in the same smooth, matte, off-white/cream plastic mannequin style as the body
 - The face should look like a SCULPTED mannequin version of the person - same facial structure, hair shape, but rendered as smooth plastic/resin material
-- UNIFORM SKIN COLOR: The ENTIRE mannequin body (face, neck, torso, arms, hands, legs, feet) MUST be ONE single uniform off-white/cream color with absolutely NO patches, blotches, spots, streaks, or color variation. The skin must look like it was molded from a single piece of smooth plastic. Do NOT add any darker or lighter spots anywhere. No sunscreen-like white patches, no tan spots, no discoloration of any kind.
+- UNIFORM SKIN COLOR: The ENTIRE mannequin body (face, neck, torso, arms, hands, legs, feet) MUST be ONE single uniform off-white/cream color with absolutely NO patches, blotches, spots, streaks, or color variation. The skin must look like it was molded from a single piece of smooth plastic. Do NOT add any darker or lighter spots anywhere.
 - The face should have the same matte, non-reflective finish as the body
-- EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. The eyes should have colored irises, dark pupils, and subtle painted eyelashes — like a high-end fashion mannequin. Do NOT leave blank/featureless eye sockets.
-- LIPS: Keep the lips the same smooth, matte, off-white/cream color as the rest of the mannequin skin. Do NOT add any color or paint to the lips.
-- Scale the head proportionally to the mannequin body size - it should look like one continuous mannequin figure
-- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR. Preserve the real hair color exactly — do NOT make it the same cream/off-white as the mannequin skin.
+- EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. Colored irises, dark pupils, and subtle painted eyelashes.
+- LIPS: Keep the lips the same smooth, matte, off-white/cream color as the rest of the mannequin skin. Do NOT add any color to the lips.
+- Scale the head proportionally to the mannequin body size
+- Hair should be rendered as a sculpted mannequin-style hair piece matching the person's EXACT hairstyle AND HAIR COLOR.
 - Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
-- The final result should look like a single cohesive mannequin figure sculpted from ONE uniform piece of plastic
-- No seams, color transitions, patches, or visible joins anywhere on the body
-- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows on the background, no variation.
-- FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input mannequin image. Do NOT crop or zoom in.
-- OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
 
-
+DIMENSION & FRAMING RULES (CRITICAL - FOLLOW EXACTLY):
+- OUTPUT IMAGE MUST be EXACTLY ${imageWidth || 800} pixels wide and ${imageHeight || 1200} pixels tall
+- The mannequin must be framed IDENTICALLY to the input: full body visible from the top of the head to the bottom of the feet
+- The mannequin should be CENTERED horizontally in the frame
+- Maintain the EXACT same scale/zoom as the input — do NOT zoom in, do NOT crop, do NOT reframe
+- Leave the same amount of space above the head and below the feet as in the input
+- BACKGROUND: Solid flat color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows, no variation.`;
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
@@ -99,9 +100,8 @@ CRITICAL RULES:
       }]);
 
     } else if (action === "reshape-body") {
-      const { mannequinImage, gender, proportions } = body;
+      const { mannequinImage, gender, proportions, imageWidth, imageHeight } = body;
       const { height, chest, waist, hips, legs } = proportions;
-      // Baseline averages for percentage calculation
       const avgH = gender === "female" ? 163 : 175;
       const avgC = gender === "female" ? 90 : 96;
       const avgW = gender === "female" ? 70 : 80;
@@ -119,9 +119,14 @@ CRITICAL RULES:
 - Hips: ${hips}cm (${hpPct}% — ${hpPct > 100 ? "wider hips" : hpPct < 100 ? "narrower hips" : "average"})
 - Inseam/Legs: ${legs}cm (${lPct}% — ${lPct > 100 ? "longer legs" : lPct < 100 ? "shorter legs" : "average"})
 Keep the same style, pose, clothing, and skin color. Only adjust the body proportions naturally. The mannequin is ${gender === "female" ? "female wearing white athletic top and shorts" : "male wearing white underwear"}.
-BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation.
-FRAMING: Show the FULL body from head to feet with the same zoom level and framing as the input image. Do NOT crop or zoom in.
-OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input image.`;
+
+DIMENSION & FRAMING RULES (CRITICAL - FOLLOW EXACTLY):
+- OUTPUT IMAGE MUST be EXACTLY ${imageWidth || 800} pixels wide and ${imageHeight || 1200} pixels tall
+- The mannequin must be framed IDENTICALLY to the input: full body visible from the top of the head to the bottom of the feet
+- The mannequin should be CENTERED horizontally in the frame
+- Maintain the EXACT same scale/zoom as the input — do NOT zoom in, do NOT crop, do NOT reframe
+- Leave the same amount of space above the head and below the feet as in the input
+- BACKGROUND: Solid flat color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows, no variation.`;
       
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
@@ -132,8 +137,8 @@ OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input image.`;
       }]);
 
     } else if (action === "try-on") {
-      const { mannequinImage, productImageUrl, gender } = body;
-      console.log("Try-on with product image length:", productImageUrl?.length || 0);
+      const { mannequinImage, productImageUrl, gender, imageWidth, imageHeight } = body;
+      console.log("Try-on with product image length:", productImageUrl?.length || 0, "Dimensions:", imageWidth, "x", imageHeight);
 
       const prompt = `You are a virtual try-on AI. I'm giving you two images:
 1. First image: A person/mannequin figure
@@ -151,9 +156,14 @@ Requirements:
 - If it's a full outfit: replace everything
 - Keep the person's face, skin, and body shape exactly the same
 - The final image should look like a real photo of someone wearing this clothing
-- BACKGROUND: The background MUST be EXACTLY the solid color #d5d3d0 (RGB 213, 211, 208) everywhere. Fill the entire background with this exact color. No gradients, no shadows on the background, no variation.
-- FRAMING: Show the FULL body from head to feet with the EXACT same zoom level, camera angle, and framing as the input mannequin image. Do NOT crop or zoom in on the clothing area.
-- OUTPUT DIMENSIONS: Keep the exact same image dimensions as the input mannequin image.`;
+
+DIMENSION & FRAMING RULES (CRITICAL - FOLLOW EXACTLY):
+- OUTPUT IMAGE MUST be EXACTLY ${imageWidth || 800} pixels wide and ${imageHeight || 1200} pixels tall
+- The mannequin must be framed IDENTICALLY to the input mannequin image: full body visible from the top of the head to the bottom of the feet
+- The mannequin should be CENTERED horizontally in the frame
+- Maintain the EXACT same scale/zoom as the input — do NOT zoom in on the clothing area, do NOT crop, do NOT reframe
+- Leave the same amount of space above the head and below the feet as in the input
+- BACKGROUND: Solid flat color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows, no variation.`;
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
