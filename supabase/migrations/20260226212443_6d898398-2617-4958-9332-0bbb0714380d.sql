@@ -1,0 +1,1 @@
+UPDATE profiles SET base_mannequin = NULL, face_image = NULL, gender = 'male' WHERE id = 'ea3b46e4-2fcd-4ae1-a5d6-b8cc16140f39';
