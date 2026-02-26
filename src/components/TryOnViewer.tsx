@@ -472,23 +472,13 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
               }}
             />
 
-            {/* Face upload button */}
-            <div className="absolute top-[6%] left-1/2 -translate-x-1/2 w-[18%] aspect-square">
-              {!currentMannequin && !isProcessing && !faceImage && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-full rounded-full border-[1.5px] border-dashed border-foreground/20 hover:border-primary/60 hover:bg-primary/5 transition-all duration-300 flex items-center justify-center backdrop-blur-sm group"
-                >
-                  <Camera className="w-4 h-4 text-muted-foreground/60 group-hover:text-primary transition-colors duration-300" />
-                </button>
-              )}
-            </div>
+            {/* Face upload - accessible from header camera icon only */}
 
-            {currentMannequin && !isProcessing && (
+            {!isProcessing && (
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute top-2 right-2 p-1.5 rounded-md bg-secondary/80 text-muted-foreground hover:text-foreground transition-colors"
-                title="Change face"
+                title={currentMannequin ? "Change face" : "Add face"}
               >
                 <Camera className="w-3.5 h-3.5" />
               </button>
