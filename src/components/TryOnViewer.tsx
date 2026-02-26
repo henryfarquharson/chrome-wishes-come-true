@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
-  RotateCcw,
+  
   ShoppingBag,
   User,
   Camera,
@@ -542,10 +542,6 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
                   )}
                 </>
               )}
-              <button className="bg-foreground/10 backdrop-blur-sm border border-border/30 rounded-full px-3 py-1.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors flex items-center gap-1">
-                <RotateCcw className="w-3 h-3" />
-                Rotate
-              </button>
             </div>
           )}
         </div>
