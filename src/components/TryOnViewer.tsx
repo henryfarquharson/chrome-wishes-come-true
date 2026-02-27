@@ -13,6 +13,7 @@ import {
   BookOpen,
   Trash2,
   X,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,13 @@ interface ClosetItem {
   product_image: string;
   result_image: string;
   product_name: string | null;
+  created_at: string;
+}
+
+interface GenerationHistoryItem {
+  id: string;
+  action: string;
+  result_image: string;
   created_at: string;
 }
 
@@ -177,6 +185,8 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
   const [showCloset, setShowCloset] = useState(false);
   const [closetItems, setClosetItems] = useState<ClosetItem[]>([]);
   const [savingToCloset, setSavingToCloset] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyItems, setHistoryItems] = useState<GenerationHistoryItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const productInputRef = useRef<HTMLInputElement>(null);
   
@@ -256,6 +266,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
       setBaseMannequinState(normalized);
       onSaveMannequin?.(normalized);
       updateStep("finalize", "done");
+      saveToHistory("blend-face", normalized);
       toast.success("Face blended successfully!");
       setTimeout(clearProcessing, 1000);
     } catch (err: any) {
@@ -343,6 +354,7 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
       setCurrentMannequin(normalizedTryOn);
       setHasProduct(true);
       updateStep("render", "done");
+      saveToHistory("try-on", normalizedTryOn);
       toast.success("Clothing fitted!");
       setTimeout(clearProcessing, 1000);
     } catch (err: any) {
@@ -418,6 +430,56 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
     toast.success("Outfit loaded from closet!");
   };
 
+  const saveToHistory = async (action: string, resultImage: string) => {
+    if (!userId) return;
+    try {
+      await supabase.from("generation_history").insert({
+        user_id: userId,
+        action,
+        result_image: resultImage,
+      });
+    } catch (err) {
+      console.error("Save to history error:", err);
+    }
+  };
+
+  const loadHistory = async () => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase
+        .from("generation_history")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setHistoryItems((data as GenerationHistoryItem[]) || []);
+    } catch (err) {
+      console.error("Load history error:", err);
+    }
+  };
+
+  const handleDeleteHistoryItem = async (id: string) => {
+    try {
+      const { error } = await supabase.from("generation_history").delete().eq("id", id);
+      if (error) throw error;
+      setHistoryItems((prev) => prev.filter((item) => item.id !== id));
+      toast.success("Removed from history");
+    } catch (err) {
+      console.error("Delete history item error:", err);
+    }
+  };
+
+  const handleSelectHistoryItem = (item: GenerationHistoryItem) => {
+    setCurrentMannequin(item.result_image);
+    if (item.action === "blend-face") {
+      setBaseMannequinState(item.result_image);
+      onSaveMannequin?.(item.result_image);
+    }
+    setShowHistory(false);
+    toast.success("Loaded from history!");
+  };
+
   return (
     <div className="flex flex-col h-full" style={{ background: '#d5d3d0' }}>
       {/* Header */}
@@ -436,6 +498,17 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
             title="My Closet"
           >
             <BookOpen className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => { setShowHistory(!showHistory); if (!showHistory) loadHistory(); }}
+            className={`p-1.5 rounded-md transition-colors ${
+              showHistory
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Generation History"
+          >
+            <History className="w-4 h-4" />
           </button>
           <button
             onClick={onReset}
@@ -585,6 +658,56 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
                       </span>
                       <button
                         onClick={() => handleDeleteClosetItem(item.id)}
+                        className="text-muted-foreground/50 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* History panel */}
+        {showHistory && (
+          <div className="w-[200px] border-l border-border/50 p-3 overflow-y-auto animate-slide-up bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-sans font-semibold text-foreground uppercase tracking-wider">
+                History
+              </p>
+              <button onClick={() => setShowHistory(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {historyItems.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground text-center py-4">
+                No generations yet. Results will appear here automatically.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {historyItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-border/30 overflow-hidden bg-secondary/30 group"
+                  >
+                    <button
+                      onClick={() => handleSelectHistoryItem(item)}
+                      className="w-full"
+                    >
+                      <img
+                        src={item.result_image}
+                        alt={`${item.action} result`}
+                        className="w-full aspect-[2/3] object-cover"
+                      />
+                    </button>
+                    <div className="p-1.5 flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground truncate flex-1">
+                        {item.action === "blend-face" ? "Face blend" : "Try-on"} · {new Date(item.created_at).toLocaleDateString()}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteHistoryItem(item.id)}
                         className="text-muted-foreground/50 hover:text-destructive transition-colors"
                       >
                         <Trash2 className="w-3 h-3" />
