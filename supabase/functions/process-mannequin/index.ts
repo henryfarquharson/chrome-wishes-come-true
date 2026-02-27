@@ -103,16 +103,16 @@ serve(async (req) => {
 1. First image: A smooth, off-white/cream colored store mannequin doll with a blank featureless head
 2. Second image: A real person's face photo
 
-Your task: SCULPT a mannequin-style version of the person's face onto the mannequin body. The result must look like a single, unified mannequin figure carved from one piece of smooth matte plastic.
+Your task: SCULPT a mannequin-style version of the person's face onto the mannequin body. The result must look like a single unified mannequin carved from one piece of smooth matte plastic.
 
-ABSOLUTELY CRITICAL - READ CAREFULLY:
-- You are NOT pasting or overlaying a photo. You are RE-CREATING the face as smooth matte plastic, like a sculptor would carve it.
-- The face MUST have the EXACT SAME smooth, matte, off-white/cream plastic texture as the mannequin body. NO real skin texture, NO pores, NO realistic skin tones.
-- SKIN COLOR: The face, neck, and entire body must be ONE SINGLE UNIFORM off-white/cream color (approximately RGB 215, 210, 205). There must be ZERO color difference between the face and body. No pink, no red, no tan, no warm tones on the face.
-- EYES: Paint realistic colored irises matching the person's eye color, with dark pupils and subtle painted lashes. Eyes should look like painted glass doll eyes.
-- LIPS: Same off-white/cream as skin. NO lip color whatsoever.
-- HAIR: Sculpted solid plastic hair piece matching the person's exact hairstyle and hair color. Should look molded, not real.
-- FACIAL FEATURES: Preserve the person's face shape, nose shape, jawline, brow structure — but render everything as smooth featureless plastic. No wrinkles, no pores, no texture.
+CRITICAL RULES:
+- You are RE-CREATING the face as smooth matte plastic — NOT pasting or overlaying the photo.
+- The face must blend SEAMLESSLY into the mannequin body with the EXACT SAME skin tone, texture, and finish as the rest of the mannequin. The transition from face to neck to body must be completely invisible — one continuous surface.
+- SKIN COLOR: Match the mannequin body's existing off-white/cream plastic color EXACTLY. Sample the color from the mannequin's chest/torso and use that IDENTICAL color for the face, neck, ears, and everywhere. No pink, no red, no tan, no warm tones. Zero color difference between face and body.
+- EYES: The ONLY color on the face. Paint realistic colored irises matching the person's eye color, with dark pupils and subtle painted lashes. Should look like painted glass doll eyes.
+- LIPS: Same off-white/cream as the mannequin skin. Absolutely NO lip color.
+- HAIR: Same off-white/cream color as the mannequin skin. NO colored hair. The hair should be a smooth sculpted plastic shape matching the person's hairstyle silhouette, but rendered in the SAME mannequin skin color. It should look like a molded plastic cap, not real hair.
+- FACIAL FEATURES: Preserve the person's face shape, nose, jawline, brow structure — but render as smooth featureless plastic with no wrinkles, pores, or skin texture.
 - The head must be proportional to the mannequin body.
 - Keep the mannequin's pose, underwear/clothing, and body completely unchanged.
 
