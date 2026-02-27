@@ -6,23 +6,45 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function callAI(apiKey: string, messages: any[]) {
-  console.log("Calling Google Gemini API directly...");
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gemini-2.0-flash-exp-image-generation",
-        messages,
-        modalities: ["image", "text"],
-      }),
+function convertToGeminiParts(messages: any[]): any[] {
+  const parts: any[] = [];
+  for (const msg of messages) {
+    if (typeof msg.content === "string") {
+      parts.push({ text: msg.content });
+    } else if (Array.isArray(msg.content)) {
+      for (const item of msg.content) {
+        if (item.type === "text") {
+          parts.push({ text: item.text });
+        } else if (item.type === "image_url") {
+          const url = item.image_url?.url || "";
+          const match = url.match(/^data:(image\/[^;]+);base64,(.+)$/s);
+          if (match) {
+            parts.push({ inline_data: { mime_type: match[1], data: match[2] } });
+          }
+        }
+      }
     }
-  );
+  }
+  return parts;
+}
+
+async function callAI(apiKey: string, messages: any[]) {
+  console.log("Calling Google Gemini native API...");
+  const model = "gemini-2.0-flash-exp-image-generation";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const parts = convertToGeminiParts(messages);
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+      },
+    }),
+  });
 
   if (!response.ok) {
     const text = await response.text();
@@ -34,32 +56,28 @@ async function callAI(apiKey: string, messages: any[]) {
 
   const data = await response.json();
   console.log("Gemini response received, checking for image...");
-  
-  const parts = data.choices?.[0]?.message?.content;
+
+  // Native Gemini format: candidates[].content.parts[].inline_data
   let imageUrl: string | undefined;
-  
-  imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  
-  if (!imageUrl && Array.isArray(parts)) {
-    for (const part of parts) {
-      if (part?.inline_data?.data) {
-        imageUrl = `data:${part.inline_data.mime_type || "image/png"};base64,${part.inline_data.data}`;
+  const candidates = data.candidates || [];
+  for (const candidate of candidates) {
+    const cParts = candidate?.content?.parts || [];
+    for (const part of cParts) {
+      if (part?.inlineData?.data) {
+        imageUrl = `data:${part.inlineData.mimeType || "image/png"};base64,${part.inlineData.data}`;
         break;
       }
     }
+    if (imageUrl) break;
   }
-  
-  if (!imageUrl && typeof parts === "string") {
-    const match = parts.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-    if (match) imageUrl = match[0];
-  }
-  
+
   if (!imageUrl) {
-    const textContent = typeof parts === "string" ? parts : JSON.stringify(parts)?.slice(0, 200) || "";
-    console.error("No image in response. Content:", textContent);
+    // Log text content for debugging
+    const textParts = candidates[0]?.content?.parts?.filter((p: any) => p.text)?.map((p: any) => p.text).join(" ") || "";
+    console.error("No image in response. Text:", textParts.slice(0, 300));
     throw { status: 500, message: "AI could not generate the image. Try a different photo or try again." };
   }
-  
+
   console.log("Image received successfully, length:", imageUrl.length);
   return imageUrl;
 }
