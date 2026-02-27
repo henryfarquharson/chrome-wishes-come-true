@@ -99,28 +99,30 @@ serve(async (req) => {
       const { faceImage, mannequinImage, gender, imageWidth, imageHeight } = body;
       console.log("Face image length:", faceImage?.length || 0, "Mannequin length:", mannequinImage?.length || 0, "Dimensions:", imageWidth, "x", imageHeight);
       
-      const prompt = `You are an expert at creating realistic store mannequin dolls. I'm giving you two images:
-1. First image: A smooth, off-white/cream colored store mannequin doll with a blank featureless head
+      const prompt = `You are an expert 3D mannequin renderer. I'm giving you two images:
+1. First image: A smooth, off-white/cream colored store mannequin doll figure with a featureless head
 2. Second image: A real person's face photo
 
-Your task: SCULPT a mannequin-style version of the person's face onto the mannequin body. The result must look like a single unified mannequin carved from one piece of smooth matte plastic.
+Your task: Create a MANNEQUIN-STYLE version of this person's face and place it on the mannequin body.
 
 CRITICAL RULES:
-- You are RE-CREATING the face as smooth matte plastic — NOT pasting or overlaying the photo.
-- The face must blend SEAMLESSLY into the mannequin body with the EXACT SAME skin tone, texture, and finish as the rest of the mannequin. The transition from face to neck to body must be completely invisible — one continuous surface.
-- SKIN COLOR: Match the mannequin body's existing off-white/cream plastic color EXACTLY. Sample the color from the mannequin's chest/torso and use that IDENTICAL color for the face, neck, ears, and everywhere. No pink, no red, no tan, no warm tones. Zero color difference between face and body.
-- EYES: The ONLY color on the face. Paint realistic colored irises matching the person's eye color, with dark pupils and subtle painted lashes. Should look like painted glass doll eyes.
-- LIPS: Same off-white/cream as the mannequin skin. Absolutely NO lip color.
-- HAIR: Same off-white/cream color as the mannequin skin. NO colored hair. The hair should be a smooth sculpted plastic shape matching the person's hairstyle silhouette, but rendered in the SAME mannequin skin color. It should look like a molded plastic cap, not real hair.
-- FACIAL FEATURES: Preserve the person's face shape, nose, jawline, brow structure — but render as smooth featureless plastic with no wrinkles, pores, or skin texture.
-- The head must be proportional to the mannequin body.
-- Keep the mannequin's pose, underwear/clothing, and body completely unchanged.
+- Do NOT paste the real photo onto the mannequin. Instead, RENDER the face in the same smooth, matte, off-white/cream plastic mannequin style as the body
+- The face should look like a SCULPTED mannequin version of the person - same facial structure, hair shape, but rendered as smooth plastic/resin material
+- UNIFORM SKIN COLOR: The ENTIRE mannequin body (face, neck, torso, arms, hands, legs, feet) MUST be ONE single uniform off-white/cream color with absolutely NO patches, blotches, spots, streaks, or color variation. The skin must look like it was molded from a single piece of smooth plastic. Do NOT add any darker or lighter spots anywhere.
+- The face should have the same matte, non-reflective finish as the body
+- EYES: Give the mannequin REALISTIC PAINTED EYES matching the person's actual eye color. Colored irises, dark pupils, and subtle painted eyelashes.
+- LIPS: Keep the lips the same smooth, matte, off-white/cream color as the rest of the mannequin skin. Do NOT add any color to the lips.
+- Scale the head proportionally to the mannequin body size
+- Hair should be rendered as a sculpted mannequin-style hair piece in the SAME off-white/cream color as the mannequin skin. NO colored hair. The hair must look like a smooth molded plastic cap matching the person's hairstyle shape.
+- Keep the mannequin's body, pose, underwear/clothing, and background completely unchanged
 
-OUTPUT RULES:
-- Image size: EXACTLY ${imageWidth || 800}x${imageHeight || 1200} pixels
-- Full body visible: head to feet, centered, same framing as input
-- Do NOT zoom in, crop, or reframe
-- Background: solid flat #d5d3d0 everywhere, no gradients or shadows`;
+DIMENSION & FRAMING RULES (CRITICAL - FOLLOW EXACTLY):
+- OUTPUT IMAGE MUST be EXACTLY ${imageWidth || 800} pixels wide and ${imageHeight || 1200} pixels tall
+- The mannequin must be framed IDENTICALLY to the input: full body visible from the top of the head to the bottom of the feet
+- The mannequin should be CENTERED horizontally in the frame
+- Maintain the EXACT same scale/zoom as the input — do NOT zoom in, do NOT crop, do NOT reframe
+- Leave the same amount of space above the head and below the feet as in the input
+- BACKGROUND: Solid flat color #d5d3d0 (RGB 213, 211, 208) everywhere. No gradients, no shadows, no variation.`;
 
       imageUrl = await callAI(LOVABLE_API_KEY, [{
         role: "user",
