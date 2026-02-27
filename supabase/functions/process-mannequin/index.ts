@@ -7,9 +7,9 @@ const corsHeaders = {
 };
 
 async function callAI(apiKey: string, messages: any[]) {
-  console.log("Calling Google Gemini API directly...");
+  console.log("Calling AI gateway...");
   const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    "https://ai.gateway.lovable.dev/v1/chat/completions",
     {
       method: "POST",
       headers: {
@@ -17,7 +17,7 @@ async function callAI(apiKey: string, messages: any[]) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.0-flash-exp-image-generation",
+        model: "google/gemini-3-pro-image-preview",
         messages,
         modalities: ["image", "text"],
       }),
@@ -26,42 +26,19 @@ async function callAI(apiKey: string, messages: any[]) {
 
   if (!response.ok) {
     const text = await response.text();
-    console.error("Gemini API error:", response.status, text);
+    console.error("AI gateway error:", response.status, text);
     if (response.status === 429) throw { status: 429, message: "Rate limit exceeded. Please wait a moment and try again." };
-    if (response.status === 403) throw { status: 403, message: "Invalid API key or quota exceeded. Check your Google Gemini API key." };
+    if (response.status === 402) throw { status: 402, message: "Usage limit reached. Please add credits in Settings → Workspace → Usage." };
     throw { status: response.status, message: `AI processing failed (${response.status}). Please try again.` };
   }
 
   const data = await response.json();
-  console.log("Gemini response received, checking for image...");
+  console.log("AI response received, checking for image...");
   
-  // Google's response format: inline_data in parts
-  const parts = data.choices?.[0]?.message?.content;
-  let imageUrl: string | undefined;
-  
-  // Try Lovable gateway format first (images array)
-  imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  
-  // Try Google native format (parts with inline_data)
-  if (!imageUrl && Array.isArray(parts)) {
-    for (const part of parts) {
-      if (part?.inline_data?.data) {
-        imageUrl = `data:${part.inline_data.mime_type || "image/png"};base64,${part.inline_data.data}`;
-        break;
-      }
-    }
-  }
-  
-  // Try OpenAI-compatible format from Google's OpenAI endpoint
-  if (!imageUrl && typeof parts === "string") {
-    // Check if there's base64 image data in the response
-    const match = parts.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
-    if (match) imageUrl = match[0];
-  }
-  
+  const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
   if (!imageUrl) {
-    const textContent = typeof parts === "string" ? parts : JSON.stringify(parts)?.slice(0, 200) || "";
-    console.error("No image in response. Content:", textContent);
+    const textContent = data.choices?.[0]?.message?.content || "";
+    console.error("No image in response. Text:", typeof textContent === "string" ? textContent.slice(0, 200) : JSON.stringify(textContent)?.slice(0, 200));
     throw { status: 500, message: "AI could not generate the image. Try a different photo or try again." };
   }
   
@@ -75,8 +52,8 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("GOOGLE_GEMINI_API_KEY");
-    if (!LOVABLE_API_KEY) throw { status: 500, message: "Google Gemini API key not configured" };
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw { status: 500, message: "Server configuration error" };
 
     const body = await req.json();
     const { action } = body;
