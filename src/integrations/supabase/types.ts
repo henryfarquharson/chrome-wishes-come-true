@@ -41,6 +41,30 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_history: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          result_image: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          result_image: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          result_image?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           base_mannequin: string | null
