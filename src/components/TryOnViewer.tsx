@@ -233,8 +233,8 @@ const TryOnViewer = ({ profile, onReset, onSaveMannequin, userId }: TryOnViewerP
     try {
       // Compress both images to reduce payload size
       const [compressedFace, compressedMannequin] = await Promise.all([
-        compressImage(face, 512),
-        compressImage(await assetToBase64(currentMannequin || baseDoll), 800),
+        compressImage(face, 400),
+        compressImage(await assetToBase64(currentMannequin || baseDoll), 600),
       ]);
 
       updateStep("prepare", "done");
